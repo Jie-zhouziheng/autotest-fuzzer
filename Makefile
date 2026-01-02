@@ -1,4 +1,5 @@
-# 配置
+CC = afl-cc
+CXX = afl-c++
 TARGET_BIN = target_program
 SOURCE_C  = test_program/target.c
 
@@ -8,7 +9,7 @@ fuzz: $(TARGET_BIN)
 	python main.py
 
 $(TARGET_BIN): $(SOURCE_C)
-	gcc -o $@ -fno-stack-protector -z execstack -no-pie $<
+	$(CC) -o $@ -fno-stack-protector -z execstack -no-pie $<
 
 clean-crash:
 	rm -f crashes/crash_*
@@ -19,5 +20,5 @@ setup:
 
 quick-test: clean-crash fuzz
 
-clean: clean-all
+clean:
 	rm -f $(TARGET_BIN)

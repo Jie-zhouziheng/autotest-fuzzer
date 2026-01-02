@@ -6,23 +6,40 @@
 .
 ├── Makefile
 ├── main.py                 # 模糊器入口
-├── target_program          # 目标程序二进制（自动生成）
+├── targets/                 # 测试目标
 ├── test_program/
-│   └── target.c            # 含漏洞的目标程序源码
+│   └── target.c            # 示例测试目标源码
 ├── seeds/                  # 初始测试用例（需手动放入种子）
 ├── crashes/                # 崩溃输入保存目录（自动生成）
 └── fuzzer/                 # 核心模块
     ├── config.py           # 配置参数
-    ├── executor.py         # 执行目标程序
-    ├── mutator.py          # 输入变异逻辑
-    ├── scheduler.py        # 种子调度策略
-    ├── seed.py             # 种子数据结构
+    ├── executor.py         # 执行组件
+    ├── mutator.py          # 变异组件
+    ├── scheduler.py        # 种子选择组件与调度组件
+    ├── seed.py             # 种子结构
     ├── fuzzer.py           # 主模糊循环
-    └── utils.py            # 工具函数
+    └── utils.py            # 工具函数与结构
 ```
+## 环境准备
+1. 构建镜像
+```bash
+docker pull aflplusplus/aflplusplus
+```
+或者使用Dockerfile
+```bash
+docker build -t my-afl-fuzzer .
+```
+
+2. 交互式运行
+```bash
+docker run -it --rm \
+  -v "$(pwd)":/src \
+  -w /src \
+  aflplusplus/aflplusplus \
+  bash
+```
+
 ## 快速开始
-- 准备环境
-    仅需 Python 3.8+ 和 GCC，无需额外依赖。
 - 编译并运行模糊器
 ```bash
 make fuzz
@@ -53,8 +70,6 @@ cat crashes/*      # 查看具体崩溃输入内容
 - 队列大小限制、变异强度等
 
 ## 未来任务
-- 使用afl++的seed
-- 利用afl-cc编译target
 - 完成执行结果监控组件
 - 完成评估组件
 - 完善已有框架

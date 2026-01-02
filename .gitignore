@@ -1,3 +1,8 @@
 /target_program
+/map1
+/build_target.sh
 /crashes/
+/my-fuzzer/
+/targets/*/
+!/targets/README.md
 __pycache__

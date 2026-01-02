@@ -1,27 +1,111 @@
-import hashlib
-import subprocess
+# fuzzer/executor.py
 import os
-from .config import TARGET_PATH, TIMEOUT_SEC
+import subprocess
+import tempfile
+import time
+import sysv_ipc
+from .config import *
+from .utils import ExecutionResult
 
-def run_target(input_data: bytes) -> tuple[bool, set[str], int]:
+MAP_SIZE = 65536
+
+def run_target(input_data: bytes) -> ExecutionResult:
     """
-    执行目标程序，返回 (is_crash, coverage_set, exit_code)
-    - coverage_set: 模拟的“路径覆盖”（可用 stdout 哈希、或未来 SHM 实现）
+    4.测试执行组件
+    创建子进程运行模糊目标，监控执行结果和覆盖率
     """
+    # 初始化返回值
+    shm_id = None
+    shm = None
+    trace_bits = bytes(MAP_SIZE)
+    is_crash = False
+    exit_code = 0
+    exec_time_ns = 0
+    is_timeout = False
+    temp_input = None
+    
     try:
-        result = subprocess.run(
-            [TARGET_PATH],
-            input=input_data,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            timeout=TIMEOUT_SEC,
-            preexec_fn=os.setsid  # 便于超时 kill 整个进程组
+        # 1. 创建共享内存（64KB bitmap）
+        shm = sysv_ipc.SharedMemory(
+            None,  # 自动分配key
+            sysv_ipc.IPC_CREX, 
+            size=MAP_SIZE
         )
-        is_crash = result.returncode != 0
-        # 简化版：用 stdout 的哈希代表行为（可替换为真实插桩）
-        coverage = {hashlib.sha1(result.stdout).hexdigest()[:8]} if result.stdout else set()
-        return is_crash, coverage, result.returncode
-    except subprocess.TimeoutExpired:
-        return True, set(), -1  # 超时视为 crash
-    except Exception:
-        return True, set(), -2
+        shm_id = shm.id
+        
+        shm.write(b'\x00' * MAP_SIZE)
+        
+        # 将输入数据写入临时文件
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.input') as f:
+            temp_input = f.name
+            f.write(input_data)
+        
+        # 设置环境变量，传递SHM ID给插装后的目标程序
+        env = os.environ.copy()
+        env['__AFL_SHM_ID'] = str(shm_id)
+        
+        # 执行模糊目标，记录执行时间
+        start_time = time.perf_counter_ns()
+        
+        try:
+            result = subprocess.run(
+                [TARGET_PATH],
+                stdin=open(temp_input, 'rb'),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=TIMEOUT_SEC,
+                env=env
+            )
+            
+            exec_time_ns = time.perf_counter_ns() - start_time
+            exit_code = result.returncode
+            
+            is_crash = (exit_code != 0)
+            
+        except subprocess.TimeoutExpired:
+            # 超时处理
+            exec_time_ns = time.perf_counter_ns() - start_time
+            is_timeout = True
+            is_crash = False  # 超时不算crash，但是个异常情况
+            exit_code = -1
+            
+        except Exception as e:
+            # 其他异常
+            exec_time_ns = time.perf_counter_ns() - start_time
+            is_crash = True
+            exit_code = -2
+        
+        # 从共享内存读取覆盖率bitmap
+        trace_bits = shm.read(MAP_SIZE)
+        
+    except sysv_ipc.ExistentialError:
+        # 共享内存创建失败
+        print("[!] Failed to create shared memory")
+        trace_bits = bytes(MAP_SIZE)
+    
+    except Exception as e:
+        print(f"[!] Unexpected error in run_target: {e}")
+        trace_bits = bytes(MAP_SIZE)
+    
+    finally:
+        # 清理资源
+        if shm:
+            try:
+                shm.detach()
+                shm.remove()
+            except:
+                pass
+        # 删除临时输入文件
+        if temp_input is not None:
+            try:
+                os.unlink(temp_input)
+            except:
+                pass
+    
+    return ExecutionResult(
+        is_crash=is_crash,
+        exit_code=exit_code,
+        exec_time_ns=exec_time_ns,
+        is_timeout=is_timeout,
+        trace_bits=trace_bits
+    )
