@@ -1,3 +1,4 @@
+/.vscode
 /target_program
 /map1
 /build_target.sh
@@ -5,4 +6,5 @@
 /my-fuzzer/
 /targets/*/
 !/targets/README.md
+/output/*/
 __pycache__

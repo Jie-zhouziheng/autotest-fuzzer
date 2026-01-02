@@ -1,17 +1,19 @@
 import random
-from typing import Set, List
+from .seed import Seed
 
-def mutate(seed_data: bytes, power: int = 5) -> Set[bytes]:
-    """生成多个变异体"""
-    results = set()
-    data = bytearray(seed_data)
-    for _ in range(power):
-        mutated = data.copy()
-        # 策略1: 随机翻转字节
-        if len(mutated) > 0:
-            i = random.randint(0, len(mutated) - 1)
-            mutated[i] ^= random.randint(1, 255)
-        results.add(bytes(mutated))
-        
-        # 可扩展：插入、删除、字典变异等
-    return results
+class Mutator:
+    def mutate(self, seed: Seed, power: int = 5) -> list[bytes]:
+        """生成多个变异体"""
+        seed_data = seed.data
+        results = list()
+        data = bytearray(seed_data)
+        for _ in range(power):
+            mutated = data.copy()
+            # 策略1: 随机翻转字节
+            if len(mutated) > 0:
+                i = random.randint(0, len(mutated) - 1)
+                mutated[i] ^= random.randint(1, 255)
+                results.append(bytes(mutated))
+                
+                # 可扩展：插入、删除、字典变异等
+        return results

@@ -1,20 +1,33 @@
 from typing import List
-from .seed import Seed
+from .seed import SeedQueue, Seed
 
-def pick_seed(queue: List[Seed]) -> Seed:
-    """简单轮询（可升级为按 favored 权重选择）"""
-    # TODO: 实现基于 coverage 或 execs 的排序
-    for s in queue:
-        if s.execs == 0:
-            s.execs += 1
-            return s
-    queue[0].execs += 1
-    return queue[0]
+class SeedScheduler:
+    def pick(self, queue: "SeedQueue") -> Seed:
+        raise NotImplementedError
+    
+class RoundRobinScheduler(SeedScheduler):
+    def __init__(self):
+        self.idx = 0
 
+    def pick(self, queue: SeedQueue) -> Seed:
+        if not queue.queue:
+            raise RuntimeError("Empty seed queue")
 
-def cal_power(seed: Seed) -> int:
-    return 20 if seed.favored else 5
+        seed = queue.queue[self.idx % len(queue.queue)]
+        self.idx += 1
+        seed.execs += 1
+        return seed
 
-def should_retire(seed: Seed) -> bool:
-    """低效种子退休：未 favored 且执行多次无新覆盖"""
-    return not seed.favored and seed.execs > 10
+    
+class PowerScheduler:
+    def assign(self, seed: Seed) -> int:
+        raise NotImplementedError
+    
+class SimplePowerScheduler(PowerScheduler):
+    def assign(self, seed: Seed) -> int:
+        base = 5
+        if seed.favored:
+            base *= 4
+        if seed.execs > 100:
+            base //= 2
+        return max(1, base)

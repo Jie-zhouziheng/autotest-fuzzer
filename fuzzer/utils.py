@@ -1,5 +1,6 @@
 import os
-from .config import CRASHES_DIR
+from .config import CRASHES_DIR, SEEDS_DIR
+from .seed import Seed
 from dataclasses import dataclass
 from typing import Set
 

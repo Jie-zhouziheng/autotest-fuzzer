@@ -5,14 +5,19 @@
 ```
 .
 ├── Makefile
-├── main.py                 # 模糊器入口
+├── Dockerfile
+├── README.md
+├── devlog.md
+├── main.py                  # 模糊器入口
 ├── targets/                 # 测试目标
 ├── test_program/
 │   └── target.c            # 示例测试目标源码
 ├── seeds/                  # 初始测试用例（需手动放入种子）
 ├── crashes/                # 崩溃输入保存目录（自动生成）
+├── output/                 # 统计图表
 └── fuzzer/                 # 核心模块
     ├── config.py           # 配置参数
+    ├── evaluator.py        # 评估组件
     ├── executor.py         # 执行组件
     ├── mutator.py          # 变异组件
     ├── scheduler.py        # 种子选择组件与调度组件
@@ -42,7 +47,7 @@ docker run -it --rm \
 ## 快速开始
 - 编译并运行模糊器
 ```bash
-make fuzz
+make quick-test
 ```
 模糊器将：
 从 seeds/ 加载初始种子

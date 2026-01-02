@@ -20,3 +20,25 @@ class Seed:
 
     def __eq__(self, other):
         return isinstance(other, Seed) and self.data == other.data
+
+
+
+class SeedQueue:
+    def __init__(self):
+        self.queue: list[Seed] = []
+        self.seen = set()
+
+    def add(self, seed: Seed):
+        if seed in self.seen:
+            return
+        self.queue.append(seed)
+        self.seen.add(seed)
+
+    def __iter__(self):
+        return iter(self.queue)
+
+    def __len__(self):
+        return len(self.queue)
+
+    def favored_seeds(self):
+        return [s for s in self.queue if s.favored]
