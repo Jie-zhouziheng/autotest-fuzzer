@@ -24,6 +24,9 @@ def load_seeds(seed_dir: str, queue: SeedQueue):
     print(f"[+] Loaded {count} initial seeds from {seed_dir}")
 
 def main():
+    # 1. 初始化配置
+    show_config()
+
     seed_queue = SeedQueue()
     load_seeds(SEEDS_DIR, seed_queue)
     if len(seed_queue) == 0:
@@ -42,7 +45,7 @@ def main():
         max_executions=MAX_EXECUTIONS,
         timeout=None
     )
-    evaluator = FuzzEvaluator(output_dir="./output")
+    evaluator = FuzzEvaluator(output_dir=OUTPUT_DIR)
 
     fuzzer = Fuzzer(
         queue=seed_queue,

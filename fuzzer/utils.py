@@ -1,8 +1,6 @@
 import os
-from .config import CRASHES_DIR, SEEDS_DIR
-from .seed import Seed
+from .config import CRASHES_DIR
 from dataclasses import dataclass
-from typing import Set
 
 
 def ensure_dirs():

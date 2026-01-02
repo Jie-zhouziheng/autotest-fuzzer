@@ -1,9 +1,6 @@
 # Dockerfile
 FROM ubuntu:22.04
 
-# 设置非交互模式，避免 tzdata 等弹窗
-ENV DEBIAN_FRONTEND=noninteractive
-
 # 安装系统依赖
 RUN apt-get update && \
     apt-get install -y \

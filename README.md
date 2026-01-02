@@ -5,11 +5,12 @@
 ```
 .
 ├── Makefile
+├── scripts                # 脚本
 ├── Dockerfile
 ├── README.md
 ├── devlog.md
-├── main.py                  # 模糊器入口
-├── targets/                 # 测试目标
+├── main.py                 # 模糊器入口
+├── targets/                # 测试目标
 ├── test_program/
 │   └── target.c            # 示例测试目标源码
 ├── seeds/                  # 初始测试用例（需手动放入种子）
@@ -44,7 +45,7 @@ docker run -it --rm \
   bash
 ```
 
-## 快速开始
+## 运行示例目标
 - 编译并运行模糊器
 ```bash
 make quick-test
@@ -59,12 +60,20 @@ make quick-test
 ls crashes/        # 查看发现的崩溃用例
 cat crashes/*      # 查看具体崩溃输入内容
 ```
+## 运行目标
+
+```bash
+maks TARGET=TXX fuzz
+```
+模糊器将:识别目标名字TNAME,编译目标到targets/build文件夹，从seeds/$TNAME中获取种子，将崩溃输出到crash/$TNAME，将图表输出到output/$TNAME。
+目前只支持运行cxxfilt
+
 ## Makefile 命令
 | 命令 | 说明 |
 |------|------|
-| make fuzz | 编译目标程序并启动模糊测试 |
+| make TARGET=TXX fuzz | 编译第XX个目标程序并启动模糊测试 |
 | make setup | 创建 seeds/ 和 crashes/ 目录 |
-| make quick-test | 清除旧崩溃记录并重新运行 |
+| make quick-test | 进行一次简单的测试 |
 | make clean-crash | 删除所有已保存的崩溃文件 |
 | make clean | 清理二进制文件和崩溃记录 |
 
@@ -75,6 +84,5 @@ cat crashes/*      # 查看具体崩溃输入内容
 - 队列大小限制、变异强度等
 
 ## 未来任务
-- 完成执行结果监控组件
-- 完成评估组件
-- 完善已有框架
+- 完善现有框架
+- 完成十个样例的脚本
