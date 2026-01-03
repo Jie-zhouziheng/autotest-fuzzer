@@ -5,7 +5,7 @@
 ```
 .
 ├── Makefile
-├── scripts                # 脚本
+├── scripts                 # 脚本
 ├── Dockerfile
 ├── README.md
 ├── devlog.md
@@ -66,7 +66,6 @@ cat crashes/*      # 查看具体崩溃输入内容
 maks TARGET=TXX fuzz
 ```
 模糊器将:识别目标名字TNAME,编译目标到targets/build文件夹，从seeds/$TNAME中获取种子，将崩溃输出到crash/$TNAME，将图表输出到output/$TNAME。
-目前只支持运行cxxfilt
 
 ## Makefile 命令
 | 命令 | 说明 |
@@ -81,7 +80,7 @@ maks TARGET=TXX fuzz
 修改 fuzzer/config.py 可调整：
 - 总执行次数（MAX_EXECUTIONS）
 - 单次执行超时（TIMEOUT_SEC）
-- 队列大小限制、变异强度等
+- 总执行时间（DEFAULT_TOTAL_TIMEOUT）
 
 ## 未来任务
 - 完善现有框架
