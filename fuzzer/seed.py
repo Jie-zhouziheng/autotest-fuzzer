@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Set
+from fuzzer.monitor import ExecutionFeedback
 
 @dataclass
 class Seed:
@@ -46,3 +47,15 @@ class SeedQueue:
 
     def favored_seeds(self):
         return [s for s in self.queue if s.favored]
+    
+    def update(self, data: bytes, parent_seed: Seed, feedback: ExecutionFeedback) -> bool:
+        if feedback.crashed:
+            parent_seed.mark_crash()
+        
+        if feedback.new_coverage:
+            new_seed = Seed(data)
+            #初始化性能数据
+            new_seed.mark_favored()
+            self.queue.append(new_seed) 
+            return True
+        return False

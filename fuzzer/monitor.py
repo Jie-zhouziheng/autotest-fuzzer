@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 @dataclass
 class ExecutionFeedback:
-    new_coverage: bool
+    new_coverage: int
     crashed: bool
     time_out: bool
 
@@ -63,6 +63,7 @@ class CoverageMonitor:
 
         # 1. 分析 coverage
         has_new = False
+        new_cov = 0
         if res.trace_bits:
             for i, byte_val in enumerate(res.trace_bits):
                 if byte_val == 0:
@@ -72,6 +73,7 @@ class CoverageMonitor:
                 if edge_sig not in self.observed_coverage:
                     self.observed_coverage.add(edge_sig)
                     has_new = True
+                    new_cov += 1
         self.unique_edges = len(self.observed_coverage)
 
         is_crash = res.is_crash
@@ -94,7 +96,7 @@ class CoverageMonitor:
 
         # 返回是否发现新 coverage（供 Fuzzer 决定是否入队）
         return ExecutionFeedback(
-            new_coverage=has_new,
+            new_coverage=new_cov,
             crashed=is_crash,
             time_out=is_hang,
         )
