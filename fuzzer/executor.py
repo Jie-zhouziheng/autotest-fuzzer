@@ -14,6 +14,7 @@ class Executor:
     def __init__(self, target_path: str = TARGET_PATH, timeout: int = TIMEOUT_SEC):
         self.target_path = target_path
         self.timeout = timeout
+        self.target_cmd_template = TARGET_CMD
     
     def run(self, input_data: bytes) -> ExecutionResult:
         """
@@ -41,23 +42,49 @@ class Executor:
             shm_id = shm.id
             shm.write(b'\x00' * MAP_SIZE)
             
+            # 设置环境变量，传递SHM ID给插装后的目标程序
+            env = os.environ.copy()
+            env['__AFL_SHM_ID'] = str(shm_id)
+
             # 将输入数据写入临时文件
             with tempfile.NamedTemporaryFile(delete=False, suffix='.input') as f:
                 temp_input = f.name
                 f.write(input_data)
             
-            # 设置环境变量，传递SHM ID给插装后的目标程序
-            env = os.environ.copy()
-            env['__AFL_SHM_ID'] = str(shm_id)
+            # --- 核心逻辑：根据是否有 @@ 构建执行命令 ---
+            full_cmd = [self.target_path]
+            use_stdin = True
+            if "@@" in self.target_cmd_template:
+                # 模式 A: 文件参数模式 (T02, T03, T04, T05, T07, T08, T09, T10)
+                use_stdin = False
+                # 替换占位符并将字符串拆分为参数列表
+                processed_args = self.target_cmd_template.replace("@@", temp_input).split()
+                full_cmd.extend(processed_args)
+            else:
+                # 模式 B: 标准输入模式 (T01, T06)
+                if self.target_cmd_template.strip():
+                    full_cmd.extend(self.target_cmd_template.split())
             
-            # 执行模糊目标，记录执行时间
+            # 3 执行模糊目标，记录执行时间
             start_time = time.perf_counter_ns()
             
             try:
-                with open(temp_input, "rb") as fin:
+                if use_stdin:
+                    # Stdin 模式：重定向文件到 stdin
+                    with open(temp_input, "rb") as fin:
+                        result = subprocess.run(
+                            full_cmd,
+                            stdin=fin,
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL,
+                            timeout=self.timeout,
+                            env=env
+                        )
+                else:
+                    # 参数模式：直接运行，stdin 指向空
                     result = subprocess.run(
-                        [self.target_path],
-                        stdin=fin,
+                        full_cmd,
+                        stdin=subprocess.DEVNULL,
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL,
                         timeout=self.timeout,

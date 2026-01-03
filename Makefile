@@ -6,40 +6,90 @@ CXX = afl-c++
 TARGET ?= T01
 
 # 1. 找到目标文件
+# Makefile
+
+TARGET ?= T01
+
+# --- 目标元数据映射 ---
 ifeq ($(TARGET), T01)
     TNAME := cxxfilt
     TSRC  := targets/binutils-2.28
+    TCMD  := 
+else ifeq ($(TARGET), T02)
+    TNAME := readelf
+    TSRC  := targets/binutils-2.28
+    TCMD  := -a @@ @@
+else ifeq ($(TARGET), T03)
+    TNAME := nm-new
+    TSRC  := targets/binutils-2.28
+    TCMD  := @@
+else ifeq ($(TARGET), T04)
+    TNAME := objdump
+    TSRC  := targets/binutils-2.28
+    TCMD  := -d @@
+else ifeq ($(TARGET), T05)
+    TNAME := djpeg
+    TSRC  := targets/libjpeg-turbo-3.0.4
+    TCMD  := @@
+else ifeq ($(TARGET), T06)
+    TNAME := readpng
+    TSRC  := targets/libpng-1.6.29
+    TCMD  := 
+else ifeq ($(TARGET), T07)
+    TNAME := xmllint
+    TSRC  := targets/libxml2-2.13.4
+    TCMD  := @@
+else ifeq ($(TARGET), T08)
+    TNAME := lua
+    TSRC  := targets/lua-5.4.7
+    TCMD  := @@
+else ifeq ($(TARGET), T09)
+    TNAME := mjs
+    TSRC  := targets/mjs-2.20.0
+    TCMD  := -f @@
+else ifeq ($(TARGET), T10)
+    TNAME := tcpdump
+    TSRC  := targets/tcpdump-tcpdump-4.99.5
+    TCMD  := -nr @@
 endif
 
-# 2. 定义路径
+# --- 路径处理 (全部转为绝对路径) ---
 BIN_OUT := $(abspath targets/build/$(TNAME))
 SDIR    := $(abspath seeds/$(TNAME))
 CDIR    := $(abspath crashes/$(TNAME))
 ODIR    := $(abspath output/$(TNAME))
 TSRC    := $(abspath $(TSRC))
 
-.PHONY: fuzz build setup
+.PHONY: fuzz build setup clean
 
-# 执行模糊测试
 fuzz: build setup
-	@echo "Running Fuzzer for $(TNAME)..."
-	@# 通过环境变量将配置注入 config.py
+	@echo "🚀 Fuzzing $(TNAME) with CMD: $(TNAME) $(TCMD)"
 	@export FUZZ_TARGET_PATH=$(BIN_OUT) \
+	        FUZZ_TARGET_CMD="$(TCMD)" \
 	        FUZZ_SEEDS_DIR=$(SDIR) \
 	        FUZZ_CRASHES_DIR=$(CDIR) \
-	        FUZZ_OUTPUT_DIR=$(ODIR) \
-	        FUZZ_TIMEOUT_SEC=1; \
+	        FUZZ_OUTPUT_DIR=$(ODIR); \
 	python3 main.py
 
-# 编译脚本
 build:
-	@chmod +x scripts/build_target.sh
-	@./scripts/build_target.sh $(TSRC) $(TNAME) $(BIN_OUT)
+	@if [ -f $(BIN_OUT) ]; then \
+		echo "✅ Pre-compiled binary found at $(BIN_OUT), skipping build."; \
+	else \
+		echo "🛠️ Building $(TNAME)..."; \
+		chmod +x scripts/build_target.sh; \
+		./scripts/build_target.sh "$(TSRC)" "$(TNAME)" "$(BIN_OUT)"; \
+	fi
 
-# 环境准备
 setup:
 	@mkdir -p $(SDIR) $(CDIR) $(ODIR)
-	@if [ ! -f $(SDIR)/seed1 ]; then echo "_Z1fv" > $(SDIR)/seed1; fi
+	@if [ -z "$$(ls -A $(SDIR))" ] && [ ! -z $(TSEED) ]; then \
+		echo -n $(TSEED) > $(SDIR)/seed_init; \
+	fi
+
+install:
+	pip install sysv-ipc
+	pip install matplotlib
+	apt-get update && apt-get install -y libpcap-dev
 
 # only for test
 TEST_BIN = target_program
@@ -58,5 +108,5 @@ clean-crash:
 	rm -rf crashes/*
 
 clean:
-	@echo "🧹 Cleaning all built binaries in $(abspath target/build)..."
-	rm -rf target/build/*
+	@echo "🧹 Cleaning all built binaries in $(abspath targets/build)..."
+	rm -rf targets/build/*
