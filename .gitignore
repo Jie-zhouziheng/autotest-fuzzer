@@ -3,8 +3,10 @@
 /map1
 /build_target.sh
 /crashes/
+/output/*/
 /my-fuzzer/
+__pycache__
 /targets/*/
 !/targets/README.md
-/output/*/
-__pycache__
+!/targets/build/
+!/targets/build/**

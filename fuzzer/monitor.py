@@ -2,7 +2,7 @@
 import time
 from typing import Optional
 from .utils import ExecutionResult, save_crash
-from .config import MAX_EXECUTIONS
+from .config import MAX_EXECUTIONS, TOTAL_TIMEOUT
 from dataclasses import dataclass
 
 @dataclass
@@ -15,6 +15,7 @@ class CoverageMonitor:
         self.observed_coverage = set()
         self.count_class_lookup = self._build_count_class_lookup()
         self.max_executions = max_executions
+        self.start_time = time.time()
         self.timeout = timeout
         self.total_execs = 0
         self.crash_count = 0
@@ -33,9 +34,13 @@ class CoverageMonitor:
 
     def should_continue(self) -> bool:
         """ 由 Monitor 自己判断是否继续 fuzzing"""
-        if self.total_execs >= self.max_executions:
-            return False
-        if self.timeout and (time.time() - self.start_time) > self.timeout:
+        #if self.total_execs >= self.max_executions:
+        #    return False
+        #if self.timeout and (time.time() - self.start_time) > self.timeout:
+        #    return False
+        #return True
+        elapsed = time.time() - (self.start_time or time.time())
+        if elapsed > TOTAL_TIMEOUT:
             return False
         return True
 
