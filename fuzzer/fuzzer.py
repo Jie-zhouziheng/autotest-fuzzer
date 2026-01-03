@@ -43,7 +43,7 @@ class Fuzzer:
     def fuzz_once(self):
         seed = self.scheduler.pick(self.queue)
         power = self.power_scheduler.assign(seed)
-        inputs = self.mutator.mutate(seed, power)
+        inputs = self.mutator.mutate(seed, self.queue, power)
 
         for data in inputs:
             if not self.monitor.should_continue():
