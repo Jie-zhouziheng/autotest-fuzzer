@@ -1,7 +1,7 @@
 import random
 import struct
 from typing import List, Optional
-from .seed import Seed
+from .seed import Seed, SeedQueue
 
 
 class Mutator:
@@ -17,7 +17,7 @@ class Mutator:
             -2147483648, -100663046, -32769, 32768, 65535, 65536, 100663045, 2147483647
         ]
 
-    def mutate(self, seed: Seed, population: List[Seed], power: int = 5) -> List[bytes]:
+    def mutate(self, seed: Seed, population: SeedQueue, power: int = 5) -> List[bytes]:
         """
         1. BitFlip (位翻转)
         2. Arithmetic (算术加减)
