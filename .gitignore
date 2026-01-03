@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /.vscode
 /target_program
 /map1
@@ -8,4 +9,17 @@ __pycache__
 /targets/*/
 !/targets/README.md
 !/targets/build/
+=======
+/.vscode
+/target_program
+/map1
+/build_target.sh
+/crashes/
+/output/*/
+/my-fuzzer/
+__pycache__
+/targets/*/
+!/targets/README.md
+!/targets/build/
+>>>>>>> ckn
 !/targets/build/**

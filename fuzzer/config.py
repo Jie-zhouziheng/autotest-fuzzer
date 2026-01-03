@@ -54,4 +54,3 @@ def show_config():
     print(f"TARGET_PATH: {TARGET_PATH}")
     print(f"SEEDS_DIR:   {SEEDS_DIR}")
     print(f"OUTPUT_DIR:  {OUTPUT_DIR}")
-    print(f"----------------------------")

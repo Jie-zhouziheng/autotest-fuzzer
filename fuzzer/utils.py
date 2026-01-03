@@ -49,7 +49,6 @@ def save_data(data: bytes, category: str, index: int):
         
         return file_name
 
-
 @dataclass
 class ExecutionResult:
     is_crash: bool

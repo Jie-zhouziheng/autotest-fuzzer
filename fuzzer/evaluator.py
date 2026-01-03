@@ -60,4 +60,3 @@ class FuzzEvaluator:
 
             plot_path = os.path.join(self.output_dir, "plot_data", "coverage_curve.png")
             plt.savefig(plot_path)
-            print(f"[+] Coverage curve saved to {self.output_dir}/coverage_curve.png")

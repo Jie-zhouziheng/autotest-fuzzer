@@ -1,4 +1,4 @@
-# fuzzer/fuzzer.py
+
 from .config import *
 from .executor import Executor
 from .mutator import Mutator
@@ -6,9 +6,10 @@ from .scheduler import SeedQueue, SeedScheduler, PowerScheduler
 from .seed import Seed
 from .monitor import CoverageMonitor      
 from .evaluator import FuzzEvaluator    
-from .utils import ExecutionResult
+from .utils import *
 
 class Fuzzer:
+
     def __init__(
         self,
         queue: SeedQueue,
@@ -42,7 +43,7 @@ class Fuzzer:
     def fuzz_once(self):
         seed = self.scheduler.pick(self.queue)
         power = self.power_scheduler.assign(seed)
-        inputs = self.mutator.mutate(seed, power)
+        inputs = self.mutator.mutate(seed, self.queue, power)
 
         for data in inputs:
             if not self.monitor.should_continue():
@@ -52,7 +53,9 @@ class Fuzzer:
 
             if feedback.new_coverage:
                 new_seed = Seed(data)
+                #初始化性能数据
+                new_seed.performance = (result.exec_time_ns, len(result.trace_bits) - result.trace_bits.count(b'\0'))
                 new_seed.mark_favored()
                 self.queue.add(new_seed)
             if feedback.crashed:
-                    seed.mark_crash()
+                seed.mark_crash()
