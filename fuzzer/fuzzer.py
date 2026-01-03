@@ -10,7 +10,6 @@ from .evaluator import FuzzEvaluator
 from .utils import ensure_dirs, ExecutionResult
 
 class Fuzzer:
-
     def __init__(
         self,
         queue: SeedQueue,
