@@ -30,7 +30,7 @@ class PowerScheduler:
 #            base *= 4
 #        if seed.execs > 100:
 #            base //= 2
-##       return max(1, base)
+#       return max(1, base)
 
 class AFLPowerScheduler(PowerScheduler):
     """

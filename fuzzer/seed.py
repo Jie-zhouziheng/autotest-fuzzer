@@ -10,6 +10,7 @@ class Seed:
     coverage: Set[str] = field(default_factory=set)  # 模拟覆盖边集合
     # 使用一个元组来存储 (执行时间ns, bitmap大小)
     # 初始值为-1，表示尚未评估
+
     performance: tuple[int, int] = field(default=(-1, -1))
 
     def mark_favored(self):

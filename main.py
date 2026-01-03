@@ -36,7 +36,6 @@ def load_seeds(seed_dir: str, queue: SeedQueue):
 def main():
     # 1. 初始化配置
     show_config()
-
     seed_queue = SeedQueue()
     load_seeds(SEEDS_DIR, seed_queue)
     if len(seed_queue) == 0:
