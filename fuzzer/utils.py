@@ -1,16 +1,54 @@
 import os
-from .config import CRASHES_DIR
+from .config import *
 from dataclasses import dataclass
 
 
-def ensure_dirs():
-    os.makedirs(CRASHES_DIR, exist_ok=True)
+def initialize_directories():
+    """
+    初始化模糊测试所需的目录结构
+    """
+    # 需要创建的目录列表
+    dirs_to_create = [
+        OUTPUT_DIR,
+        QUEUE_DIR,     # 对应 output/queue
+        CRASH_DIR,     # 对应 output/crashes
+        HANG_DIR,      # 对应 output/hangs
+        PLOT_DIR       # 对应 output/plot_data
+    ]
+    
+    for d in dirs_to_create:
+        if not os.path.exists(d):
+            os.makedirs(d, exist_ok=True)
+            print(f"[+] Created directory: {d}")
+        else:
+            # 可选：如果目录已存在，是否需要清空旧的实验数据？
+            # print(f"[*] Directory already exists: {d}")
+            pass
+    if not os.path.exists(SEEDS_DIR):
+        print(f"[!] Warning: Seed directory {SEEDS_DIR} not found!")
 
-def save_crash(data: bytes):
-    idx = len(os.listdir(CRASHES_DIR))
-    path = os.path.join(CRASHES_DIR, f"crash_{idx:06d}")
-    with open(path, 'wb') as f:
-        f.write(data)
+def save_data(data: bytes, category: str, index: int):
+        """
+        category: 'queue', 'crash', or 'hang'
+        """
+        mapping = {
+        'queue': (QUEUE_DIR, "id"),
+        'crash': (CRASH_DIR, "crash"),
+        'hang': (HANG_DIR, "hang")
+        }
+        
+        if category not in mapping:
+            return None
+
+        folder, prefix = mapping[category]
+        file_name = f"{prefix}:{index:06d}"
+        file_path = os.path.join(folder, file_name)
+
+        with open(file_path, "wb") as f:
+            f.write(data)
+        
+        return file_name
+
 
 @dataclass
 class ExecutionResult:

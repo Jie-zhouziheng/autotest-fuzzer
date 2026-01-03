@@ -1,5 +1,4 @@
 # fuzzer/fuzzer.py
-import os
 from .config import *
 from .executor import Executor
 from .mutator import Mutator
@@ -7,7 +6,7 @@ from .scheduler import SeedQueue, SeedScheduler, PowerScheduler
 from .seed import Seed
 from .monitor import CoverageMonitor      
 from .evaluator import FuzzEvaluator    
-from .utils import ensure_dirs, ExecutionResult
+from .utils import ExecutionResult
 
 class Fuzzer:
     def __init__(

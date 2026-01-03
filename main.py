@@ -6,7 +6,7 @@ from fuzzer.scheduler import *
 from fuzzer.seed import *
 from fuzzer.monitor import *
 from fuzzer.evaluator import *    
-from fuzzer.utils import ensure_dirs, ExecutionResult
+from fuzzer.utils import *
 import os
 
 def load_seeds(seed_dir: str, queue: SeedQueue):
@@ -36,6 +36,7 @@ def load_seeds(seed_dir: str, queue: SeedQueue):
 def main():
     # 1. 初始化配置
     show_config()
+    initialize_directories()
 
     seed_queue = SeedQueue()
     load_seeds(SEEDS_DIR, seed_queue)

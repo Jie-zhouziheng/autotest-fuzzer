@@ -56,7 +56,6 @@ endif
 # --- 路径处理 (全部转为绝对路径) ---
 BIN_OUT := $(abspath targets/build/$(TNAME))
 SDIR    := $(abspath seeds/$(TNAME))
-CDIR    := $(abspath crashes/$(TNAME))
 ODIR    := $(abspath output/$(TNAME))
 TSRC    := $(abspath $(TSRC))
 
@@ -67,7 +66,6 @@ fuzz: build setup
 	@export FUZZ_TARGET_PATH=$(BIN_OUT) \
 	        FUZZ_TARGET_CMD="$(TCMD)" \
 	        FUZZ_SEEDS_DIR=$(SDIR) \
-	        FUZZ_CRASHES_DIR=$(CDIR) \
 	        FUZZ_OUTPUT_DIR=$(ODIR); \
 	python3 main.py
 
@@ -81,7 +79,7 @@ build:
 	fi
 
 setup:
-	@mkdir -p $(SDIR) $(CDIR) $(ODIR)
+	@mkdir -p $(SDIR) $(ODIR)
 	@if [ -z "$$(ls -A $(SDIR))" ] && [ ! -z $(TSEED) ]; then \
 		echo -n $(TSEED) > $(SDIR)/seed_init; \
 	fi
@@ -101,12 +99,19 @@ test: $(TEST_BIN)
 $(TEST_BIN): $(TEST_SRC)
 	$(CC) -o $@ -fno-stack-protector -z execstack -no-pie $<
 
-quick-test: clean-crash test
-
-clean-crash:
-	@echo "🧹 Cleaning all crash records in $(abspath crashes)..."
-	rm -rf crashes/*
+quick-test: clean-results test
 
 clean:
-	@echo "🧹 Cleaning all built binaries in $(abspath targets/build)..."
+	@echo "🧹 Cleaning all built binaries in targets/build..."
 	rm -rf targets/build/*
+	@echo "🗑️  Cleaning all fuzzing outputs in $(OUTPUT_DIR)..."
+	rm -rf $(OUTPUT_DIR)
+	@echo "✨ Clean done."
+
+clean-results:
+	@echo "🧹 Cleaning results only..."
+	rm -rf $(OUTPUT_DIR)/crashes/*
+	rm -rf $(OUTPUT_DIR)/queue/*
+	rm -rf $(OUTPUT_DIR)/hangs/*
+	rm -rf $(OUTPUT_DIR)/plot_data/*
+	rm -f $(OUTPUT_DIR)/.cur_input

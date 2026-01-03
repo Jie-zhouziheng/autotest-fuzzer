@@ -1,14 +1,15 @@
 # monitor.py
 import time
 from typing import Optional
-from .utils import ExecutionResult, save_crash
-from .config import MAX_EXECUTIONS, TOTAL_TIMEOUT
+from .utils import ExecutionResult, save_data
+from .config import *
 from dataclasses import dataclass
 
 @dataclass
 class ExecutionFeedback:
     new_coverage: bool
     crashed: bool
+    time_out: bool
 
 class CoverageMonitor:
     def __init__(self, max_executions: int = MAX_EXECUTIONS,timeout: Optional[float] = None):
@@ -18,9 +19,12 @@ class CoverageMonitor:
         self.start_time = time.time()
         self.timeout = timeout
         self.total_execs = 0
+
+        self.hang_count = 0
         self.crash_count = 0
-        self.unique_paths = 0
-        self.coverage_history = []  # [(time_sec, unique_paths)]
+        self.data_id = 0
+        self.unique_edges = 0
+        self.coverage_history = []  # [(time_sec, unique_edges)]
 
     def start_monitoring(self):
         """由 Fuzzer 在开始时调用"""
@@ -57,12 +61,7 @@ class CoverageMonitor:
         elapsed = self.get_elapsed()
         self.total_execs += 1
 
-        # 1. 检查 crash
-        if res.is_crash:
-            self.crash_count += 1
-            save_crash(input_data)  # 监控组件自己保存
-
-        # 2. 分析 coverage
+        # 1. 分析 coverage
         has_new = False
         if res.trace_bits:
             for i, byte_val in enumerate(res.trace_bits):
@@ -73,23 +72,40 @@ class CoverageMonitor:
                 if edge_sig not in self.observed_coverage:
                     self.observed_coverage.add(edge_sig)
                     has_new = True
-        # 3. 保存新路径
+        self.unique_edges = len(self.observed_coverage)
+
+        is_crash = res.is_crash
+        is_hang = res.is_timeout
+
+        # 2. 文件保存
         if has_new:
-            self.unique_paths = len(set(sig[0] for sig in self.observed_coverage))
-            self.coverage_history.append((elapsed, self.unique_paths))
+            self.data_id += 1 # 也可以作为 queue 的计数器
+            save_data(input_data, 'queue', self.data_id)
+            if not self.coverage_history or (elapsed - self.coverage_history[-1][0] > 0.05):
+                self.coverage_history.append((elapsed, self.unique_edges))
+
+        if res.is_crash:
+            self.crash_count += 1
+            save_data(input_data, 'crash', self.crash_count)
+
+        if res.is_timeout:
+            self.hang_count += 1
+            save_data(input_data, 'hang', self.hang_count)
 
         # 返回是否发现新 coverage（供 Fuzzer 决定是否入队）
         return ExecutionFeedback(
             new_coverage=has_new,
-            crashed=res.is_crash
+            crashed=is_crash,
+            time_out=is_hang,
         )
 
     def get_stats(self) -> dict:
         return {
             "total_execs": self.total_execs,
             "crash_count": self.crash_count,
-            "unique_paths": self.unique_paths,
-            "coverage_history": self.coverage_history,
+            "hang_count" : self.hang_count,
+            "unique_paths": self.unique_edges,
+            "coverage_history":sorted(self.coverage_history, key=lambda x: x[0]),
         }
 
     def _build_count_class_lookup(self):

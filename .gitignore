@@ -2,7 +2,6 @@
 /target_program
 /map1
 /build_target.sh
-/crashes/
 /output/*/
 /my-fuzzer/
 __pycache__
