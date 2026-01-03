@@ -44,7 +44,7 @@ def main():
         return
     
     scheduler = RoundRobinScheduler()
-    power_scheduler = SimplePowerScheduler()
+    power_scheduler = AFLPowerScheduler()
     mutator = Mutator()
 
     executor = Executor(

@@ -53,6 +53,8 @@ class Fuzzer:
 
             if feedback.new_coverage:
                 new_seed = Seed(data)
+                #初始化性能数据
+                new_seed.performance = (result.exec_time_ns, len(result.trace_bits) - result.trace_bits.count(b'\0'))
                 new_seed.mark_favored()
                 self.queue.add(new_seed)
             if feedback.crashed:
