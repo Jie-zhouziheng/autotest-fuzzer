@@ -55,4 +55,22 @@ class ExecutionResult:
     exit_code: int
     exec_time_ns: int
     is_timeout: bool
-    trace_bits: bytes  # ← 关键：64KB 原始 coverage 数据
+    trace_bits: bytes
+
+@dataclass
+class ExecutionFeedback:
+    """
+    执行反馈，不包含 trace_bits 以避免数据复制。
+    其他组件应通过 SHMAccessor 接口访问 trace_bits。
+    """
+    # 覆盖相关
+    new_coverage: int              # 本次新增的边数量
+    total_unique_edges: int        # 当前全局唯一边总数
+    # 结果相关
+    crashed: bool                  
+    time_out: bool              
+    # 性能相关
+    exec_time_ns: float        
+    # 覆盖"密度"相关（本次执行激活了多少边）
+    bitmap_size: int
+    trace_bits: bytes

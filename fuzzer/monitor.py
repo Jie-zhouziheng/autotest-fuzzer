@@ -2,15 +2,8 @@
 import os
 import time
 from typing import Optional
-from .utils import ExecutionResult, save_data
+from .utils import ExecutionResult, ExecutionFeedback, save_data
 from .config import *
-from dataclasses import dataclass
-
-@dataclass
-class ExecutionFeedback:
-    new_coverage: int
-    crashed: bool
-    time_out: bool
 
 class CoverageMonitor:
     def __init__(self, max_executions: int = MAX_EXECUTIONS,timeout: Optional[float] = None):
@@ -107,11 +100,6 @@ class CoverageMonitor:
         return time.time() - self.start_time
 
     def should_continue(self) -> bool:
-        #if self.total_execs >= self.max_executions:
-        #    return False
-        #if self.timeout and (time.time() - self.start_time) > self.timeout:
-        #    return False
-        #return True
         elapsed = time.time() - (self.start_time or time.time())
         if elapsed > TOTAL_TIMEOUT:
             return False
@@ -131,17 +119,17 @@ class CoverageMonitor:
         self.total_execs += 1
 
         # 1. 分析 coverage
-        has_new = False
         new_cov = 0
+        bitmap_size = 0
         if res.trace_bits:
             for i, byte_val in enumerate(res.trace_bits):
                 if byte_val == 0:
                     continue
+                bitmap_size += 1
                 bucket = self.count_class_lookup[byte_val]
                 edge_sig = (i, bucket)
                 if edge_sig not in self.observed_coverage:
                     self.observed_coverage.add(edge_sig)
-                    has_new = True
                     new_cov += 1
         self.unique_edges = len(self.observed_coverage)
 
@@ -149,23 +137,25 @@ class CoverageMonitor:
         is_hang = res.is_timeout
 
         # 2. 文件保存
-        if has_new:
+        if new_cov > 0:
             self.data_id += 1 # 也可以作为 queue 的计数器
             save_data(input_data, 'queue', self.data_id)
-
         if res.is_crash:
             self.crash_count += 1
             save_data(input_data, 'crash', self.crash_count)
-
         if res.is_timeout:
             self.hang_count += 1
             save_data(input_data, 'hang', self.hang_count)
 
-        # 返回是否发现新 coverage（供 Fuzzer 决定是否入队）
+        # 3. 组装反馈
         return ExecutionFeedback(
             new_coverage=new_cov,
+            total_unique_edges=self.unique_edges,
             crashed=is_crash,
             time_out=is_hang,
+            exec_time_ns=res.exec_time_ns,
+            bitmap_size=bitmap_size,
+            trace_bits=res.trace_bits
         )
 
     def get_stats(self) -> dict:

@@ -4,6 +4,11 @@ CXX = afl-c++
 .PHONY: fuzz clean-crash clean-all setup quick-test
 
 TARGET ?= T01
+# Fuzzer 配置参数（可通过 make 参数传入）
+TIME ?= 3600        # 总运行时间（秒），默认 1 小时
+TIMEOUT ?= 2         # 单次执行超时（秒）
+QUEUE ?= 500         # 最大队列大小
+
 # 1. 找到目标文件
 
 # --- 目标元数据映射 ---
@@ -60,10 +65,14 @@ TSRC    := $(abspath $(TSRC))
 
 fuzz: build setup
 	@echo "🚀 Fuzzing $(TNAME) with CMD: $(TNAME) $(TCMD)"
+	@echo "⚙️  Configuration: TIME=$(TIME)s, TIMEOUT=$(TIMEOUT)s, QUEUE=$(QUEUE)"
 	@export FUZZ_TARGET_PATH=$(BIN_OUT) \
 	        FUZZ_TARGET_CMD="$(TCMD)" \
 	        FUZZ_SEEDS_DIR=$(SDIR) \
-	        FUZZ_OUTPUT_DIR=$(ODIR); \
+	        FUZZ_OUTPUT_DIR=$(ODIR) \
+	        FUZZ_TOTAL_TIMEOUT=$(TIME) \
+	        FUZZ_TIMEOUT_SEC=$(TIMEOUT) \
+	        FUZZ_MAX_QUEUE_SIZE=$(QUEUE); \
 	python3 main.py
 
 .PHONY: analysis
@@ -71,10 +80,14 @@ fuzz: build setup
 analysis: build setup
 	@echo "🔍 Starting Performance Analysis for $(TNAME)..."
 	@echo "📊 Mode: cProfile + Execution Speed Stats"
+	@echo "⚙️  Configuration: TIME=$(TIME)s, TIMEOUT=$(TIMEOUT)s, QUEUE=$(QUEUE)"
 	@export FUZZ_TARGET_PATH=$(BIN_OUT) \
 	        FUZZ_TARGET_CMD="$(TCMD)" \
 	        FUZZ_SEEDS_DIR=$(SDIR) \
-	        FUZZ_OUTPUT_DIR=$(ODIR); \
+	        FUZZ_OUTPUT_DIR=$(ODIR) \
+	        FUZZ_TOTAL_TIMEOUT=$(TIME) \
+	        FUZZ_TIMEOUT_SEC=$(TIMEOUT) \
+	        FUZZ_MAX_QUEUE_SIZE=$(QUEUE); \
 	python3 -m cProfile -o perf.prof main.py --analyze
 
 build:

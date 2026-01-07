@@ -17,7 +17,8 @@ class Fuzzer:
         mutator: Mutator,
         executor: Executor,
         monitor: CoverageMonitor,
-        evaluator: FuzzEvaluator
+        evaluator: FuzzEvaluator,
+        frequency: str = None
     ):
         self.queue = queue
         self.scheduler = scheduler
@@ -27,7 +28,10 @@ class Fuzzer:
         self.monitor = monitor
         self.evaluator = evaluator
 
-        self.frequency = 'seconds'
+        if frequency is None:
+            self.frequency = get_frequency_by_timeout()
+        else:
+            self.frequency = frequency
     
     def run(self):
         self.monitor.start_monitoring()
