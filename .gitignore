@@ -1,25 +1,31 @@
-<<<<<<< HEAD
-/.vscode
-/target_program
-/map1
-/build_target.sh
-/output/*/
-/my-fuzzer/
-__pycache__
-/targets/*/
-!/targets/README.md
-!/targets/build/
-=======
-/.vscode
-/target_program
-/map1
-/build_target.sh
-/crashes/
-/output/*/
-/my-fuzzer/
-__pycache__
-/targets/*/
-!/targets/README.md
-!/targets/build/
->>>>>>> ckn
-!/targets/build/**
+# IDE 配置
+.vscode/
+.idea/
+# Python 缓存和编译文件
+__pycache__/
+build/
+.pytest_cache/
+# Fuzzing 输出目录（所有结果）
+output/
+!output/.gitkeep
+# 编译产物
+targets/build/
+target_program
+*.o
+*.a
+*.so
+# 临时文件和共享内存
+.cur_input
+map1
+*.prof
+perf.prof
+# 源代码目录（保留 README.md）
+targets/*/
+!targets/README.md
+!targets/build/.gitkeep
+# 测试程序构建产物
+test_program/target_program
+# 其他
+*.log
+*.tmp
+.DS_Store
