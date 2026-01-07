@@ -4,7 +4,6 @@ import subprocess
 import tempfile
 import signal
 import sysv_ipc
-
 from .config import *
 from .utils import ExecutionResult
 
@@ -19,6 +18,21 @@ class Executor:
 
         self.shm = sysv_ipc.SharedMemory(None, sysv_ipc.IPC_CREX, size=MAP_SIZE)
         self.shm_id = self.shm.id
+    
+    def print_bitmap_snapshot(self, trace_bits: bytes, rows=32, cols=64):
+        print(f"{'Edge ID':<10} | {'Hit Count':<10}")
+        print("-" * 25)
+        
+        found_any = False
+        for edge_id, count in enumerate(trace_bits):
+            if count != 0:
+                # count 是一个字节，范围 0-255
+                print(f"{edge_id:<10} | {count:<10}")
+                found_any = True
+        
+        if not found_any:
+            print("No edges were hit (Bitmap is empty).")
+        print("-" * 25)
     
     def run(self, input_data: bytes) -> ExecutionResult:
         """
@@ -85,7 +99,7 @@ class Executor:
             exec_time_ns = time.perf_counter_ns() - start_time
             exit_code = result.returncode
 
-            # AFL 风格 crash 判断：signal
+            # crash 判断：signal
             if exit_code < 0:
                 is_crash = True
             
@@ -101,8 +115,12 @@ class Executor:
         
         # 从共享内存读取覆盖率bitmap
         trace_bits = self.shm.read(MAP_SIZE)
+
+        #active_count = sum(1 for b in trace_bits if b != 0)
+        #if active_count > 0:
+        #    print(f"[*] Executed! Active Edges: {active_count}")
+        #    self.print_bitmap_snapshot(trace_bits)
             
-        
         return ExecutionResult(
             is_crash=is_crash,
             exit_code=exit_code,

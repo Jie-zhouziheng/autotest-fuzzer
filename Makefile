@@ -4,11 +4,7 @@ CXX = afl-c++
 .PHONY: fuzz clean-crash clean-all setup quick-test
 
 TARGET ?= T01
-
 # 1. 找到目标文件
-# Makefile
-
-TARGET ?= T01
 
 # --- 目标元数据映射 ---
 ifeq ($(TARGET), T01)
@@ -54,6 +50,7 @@ else ifeq ($(TARGET), T10)
 endif
 
 # --- 路径处理 (全部转为绝对路径) ---
+OUTPUT_DIR := $(abspath output)
 BIN_OUT := $(abspath targets/build/$(TNAME))
 SDIR    := $(abspath seeds/$(TNAME))
 ODIR    := $(abspath output/$(TNAME))
@@ -69,16 +66,30 @@ fuzz: build setup
 	        FUZZ_OUTPUT_DIR=$(ODIR); \
 	python3 main.py
 
+.PHONY: analysis
+
+analysis: build setup
+	@echo "🔍 Starting Performance Analysis for $(TNAME)..."
+	@echo "📊 Mode: cProfile + Execution Speed Stats"
+	@export FUZZ_TARGET_PATH=$(BIN_OUT) \
+	        FUZZ_TARGET_CMD="$(TCMD)" \
+	        FUZZ_SEEDS_DIR=$(SDIR) \
+	        FUZZ_OUTPUT_DIR=$(ODIR); \
+	python3 -m cProfile -o perf.prof main.py --analyze
+
 build:
 	@if [ -f $(BIN_OUT) ]; then \
 		echo "✅ Pre-compiled binary found at $(BIN_OUT), skipping build."; \
 	else \
 		echo "🛠️ Building $(TNAME)..."; \
-		chmod +x scripts/build_target.sh; \
-		./scripts/build_target.sh "$(TSRC)" "$(TNAME)" "$(BIN_OUT)"; \
+		chmod +x ./scripts/build_target.sh && \
+		bash ./scripts/build_target.sh "$(TSRC)" "$(TNAME)" "$(BIN_OUT)" && \
+		[ -f $(BIN_OUT) ] || (echo "❌ Error: Build completed but binary not found at $(BIN_OUT)" && exit 1); \
 	fi
 
 setup:
+	@echo "🧹 Resetting output directory for $(TNAME) at $(ODIR)..."
+	@rm -rf $(ODIR)
 	@mkdir -p $(SDIR) $(ODIR)
 	@if [ -z "$$(ls -A $(SDIR))" ] && [ ! -z $(TSEED) ]; then \
 		echo -n $(TSEED) > $(SDIR)/seed_init; \
@@ -87,7 +98,8 @@ setup:
 install:
 	pip install sysv-ipc
 	pip install matplotlib
-	apt-get update && apt-get install -y libpcap-dev
+	pip install snakeviz
+# apt-get update && apt-get install -y libpcap-dev
 
 # only for test
 TEST_BIN = target_program
@@ -110,8 +122,8 @@ clean:
 
 clean-results:
 	@echo "🧹 Cleaning results only..."
-	rm -rf $(OUTPUT_DIR)/crashes/*
-	rm -rf $(OUTPUT_DIR)/queue/*
-	rm -rf $(OUTPUT_DIR)/hangs/*
-	rm -rf $(OUTPUT_DIR)/plot_data/*
-	rm -f $(OUTPUT_DIR)/.cur_input
+	rm -rf $(ODIR)/crashes/*
+	rm -rf $(ODIR)/queue/*
+	rm -rf $(ODIR)/hangs/*
+	rm -rf $(ODIR)/plot_data/*
+	rm -f $(ODIR)/.cur_input

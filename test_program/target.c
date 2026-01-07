@@ -27,9 +27,7 @@ int main() {
     }
 
     if (input[0] == 'X' && n > 2 && input[1] == 'Y' && input[2] == 'Z') {
-        printf("xyz\n");
         abort();
-        int a = 1 / 0;
     }
 
     printf("success\n");

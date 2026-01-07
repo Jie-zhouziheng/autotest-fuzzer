@@ -1,4 +1,5 @@
 # monitor.py
+import os
 import time
 from typing import Optional
 from .utils import ExecutionResult, save_data
@@ -15,6 +16,7 @@ class CoverageMonitor:
     def __init__(self, max_executions: int = MAX_EXECUTIONS,timeout: Optional[float] = None):
         self.observed_coverage = set()
         self.count_class_lookup = self._build_count_class_lookup()
+
         self.max_executions = max_executions
         self.start_time = time.time()
         self.timeout = timeout
@@ -24,20 +26,87 @@ class CoverageMonitor:
         self.crash_count = 0
         self.data_id = 0
         self.unique_edges = 0
-        self.coverage_history = []  # [(time_sec, unique_edges)]
+
+        # log 
+        self.last_print_time = self.start_time
+        self.log_file_path = os.path.join(PLOT_DIR, "logfile.txt")
+        if not os.path.exists(PLOT_DIR):
+            os.makedirs(PLOT_DIR)
+        with open(self.log_file_path, "w") as f:
+            f.write("unix_time,elapsed_time,unique_edges,total_execs,crash_count,hang_count,exec_speed\n")
 
     def start_monitoring(self):
-        """由 Fuzzer 在开始时调用"""
         self.start_time = time.time()
+        self.last_print_time = self.start_time # 重置打印时间
+
+        with open(self.log_file_path, "a") as f:
+            f.write(f"{self.start_time},0.00,0,0,0,0,0.00\n")
+
+    def _get_log_interval(self, elapsed: float, time_unit: str, exec_speed: float) -> float:
+        """
+        根据记录的时间单位与当前执行速度，决定日志记录频率（间隔，单位：秒）
+        - seconds: 前几秒高频记录，之后目标是每 ~50 次执行记录一次，区间 [0.1s, 0.5s]
+        - minutes: 目标是每 ~1000 次执行记录一次，区间 [10s, 120s]，长时间运行时略放宽
+        - hours  : 使用「原先」的自适应机制（<10min/10s，<1h/30s，其后/60s），适合超长时间运行
+        """
+        if time_unit == "seconds":
+            if elapsed < 5.0:
+                return 0.05
+            if exec_speed <= 0:
+                return 0.5
+            interval = 50.0 / exec_speed  # 希望每条日志约覆盖 50 次执行
+            return max(0.1, min(0.5, interval))
+        elif time_unit == "minutes":
+            if exec_speed <= 0:
+                base = 30.0
+            else:
+                base = 1000.0 / exec_speed
+            base = max(10.0, min(120.0, base))
+            if elapsed > 3600:
+                base = max(30.0, min(180.0, base))
+            return base
+        elif time_unit == "hours":
+            if elapsed < 600:      # < 10 min
+                return 10.0
+            elif elapsed < 3600:   # 10 min ~ 1 h
+                return 30.0
+            else:                  # > 1 h
+                return 60.0
+        # default to seconds
+        return 1.0
+
+    def log_status(self, time_unit: str = "seconds"):
+        current_time = time.time()
+        elapsed = current_time - self.start_time
+        exec_speed = self.total_execs / elapsed if elapsed > 0 else 0.0
+        interval = self._get_log_interval(elapsed, time_unit, exec_speed)
+        
+        if current_time - self.last_print_time >= interval:
+            exec_speed = self.total_execs / elapsed if elapsed > 0 else 0
+            time_str = time.strftime('%H:%M:%S')
+
+            status_msg = (
+                f"[{time_str}] "
+                f"Execs: {self.total_execs} | "
+                f"Speed: {exec_speed:.2f} exec/s | "
+                f"Paths: {self.unique_edges} | "
+                f"Crashes: {self.crash_count} | "
+                f"Hangs: {self.hang_count}"
+            )
+            print(status_msg)
+            
+            # 写入结构化的 CSV 格式到 log_file，方便 evaluator 解析
+            with open(self.log_file_path, "a") as f:
+                f.write(f"{current_time},{elapsed:.2f},{self.unique_edges},{self.total_execs},{self.crash_count},{self.hang_count},{exec_speed:.2f}\n")
+            
+            self.last_print_time = current_time
     
     def get_elapsed(self) -> float:
-        """安全地获取已运行时间"""
         if self.start_time is None:
             return 0.0
         return time.time() - self.start_time
 
     def should_continue(self) -> bool:
-        """ 由 Monitor 自己判断是否继续 fuzzing"""
         #if self.total_execs >= self.max_executions:
         #    return False
         #if self.timeout and (time.time() - self.start_time) > self.timeout:
@@ -83,8 +152,6 @@ class CoverageMonitor:
         if has_new:
             self.data_id += 1 # 也可以作为 queue 的计数器
             save_data(input_data, 'queue', self.data_id)
-            if not self.coverage_history or (elapsed - self.coverage_history[-1][0] > 0.05):
-                self.coverage_history.append((elapsed, self.unique_edges))
 
         if res.is_crash:
             self.crash_count += 1
@@ -107,7 +174,7 @@ class CoverageMonitor:
             "crash_count": self.crash_count,
             "hang_count" : self.hang_count,
             "unique_paths": self.unique_edges,
-            "coverage_history":sorted(self.coverage_history, key=lambda x: x[0]),
+            "elapsed_time": self.get_elapsed(),
         }
 
     def _build_count_class_lookup(self):

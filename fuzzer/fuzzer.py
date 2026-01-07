@@ -26,17 +26,20 @@ class Fuzzer:
         self.executor = executor
         self.monitor = monitor
         self.evaluator = evaluator
+
+        self.frequency = 'seconds'
     
     def run(self):
         self.monitor.start_monitoring()
-        self.evaluator.start_fuzzing()
 
         while self.monitor.should_continue():
             self.fuzz_once()
+            self.monitor.log_status(self.frequency) # log middle status
 
         self.evaluator.generate_report(
             self.monitor.get_stats(),
-            len(self.queue)
+            len(self.queue),
+            self.frequency
         )
 
     def fuzz_once(self):

@@ -23,14 +23,14 @@ class PowerScheduler:
     def assign(self, seed: Seed) -> int:
         raise NotImplementedError
 
-#class SimplePowerScheduler(PowerScheduler):
-#   def assign(self, seed: Seed) -> int:
-#        base = 5
-#        if seed.favored:
-#            base *= 4
-#        if seed.execs > 100:
-#            base //= 2
-#       return max(1, base)
+class SimplePowerScheduler(PowerScheduler):
+   def assign(self, seed: Seed) -> int:
+        base = 5
+        if seed.favored:
+            base *= 4
+        if seed.execs > 100:
+            base //= 2
+        return max(1, base)
 
 class AFLPowerScheduler(PowerScheduler):
     """
