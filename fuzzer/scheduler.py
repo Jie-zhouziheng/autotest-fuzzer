@@ -1,10 +1,12 @@
 from typing import List
 from .seed import SeedQueue, Seed
 import math
+
+# ----- seed scheduler -----
 class SeedScheduler:
     def pick(self, queue: "SeedQueue") -> Seed:
         raise NotImplementedError
-    
+
 class RoundRobinScheduler(SeedScheduler):
     def __init__(self):
         self.idx = 0
@@ -18,7 +20,100 @@ class RoundRobinScheduler(SeedScheduler):
         seed.execs += 1
         return seed
 
+
+class AFLSmartScheduler(SeedScheduler):
+    def __init__(self):
+        self.idx = 0
+
+    def pick(self, queue: SeedQueue) -> Seed:
+        """
+        优先寻找并返回队列中的 favored 种子。
+        在多个 favored 种子中，选择质量更好的（execs 更少、exec_time_ns 更短等）。
+        """
+        if len(queue) == 0:
+            raise RuntimeError("Empty seed queue")
+
+        max_search = len(queue)
+        search_count = 0
+        
+        favored_candidates = []
+        
+        while search_count < max_search:
+            if self.idx >= len(queue):
+                self.idx = 0
+
+            seed = queue.queue[self.idx]
+            
+            if seed.favored:
+                favored_candidates.append(seed)
+            
+            self.idx += 1
+            search_count += 1
+            
+            if favored_candidates and search_count >= len(queue):
+                break
+
+        # 如果有 favored 种子，选择最好的
+        if favored_candidates:
+            # 优先选择：execs 更少、exec_time_ns 更短、depth 更浅、bitmap_size 更大
+            best_seed = min(favored_candidates, key=lambda s: (
+                s.execs,                    # 执行次数越少越好
+                s.exec_time_ns,             # 执行时间越短越好
+                s.depth,                    # 深度越浅越好
+                -s.bitmap_size              # bitmap_size 越大越好（取负号）
+            ))
+            best_seed.execs += 1
+            self.idx = (queue.queue.index(best_seed) + 1) % len(queue.queue)
+            return best_seed
+
+        # 如果没有 favored 种子，退化为 Round Robin
+        if self.idx >= len(queue):
+            self.idx = 0
+
+        seed = queue.queue[self.idx]
+        self.idx += 1
+        seed.execs += 1
+        return seed
+
+class AFLPlusPlusScheduler(SeedScheduler):
+    """
+    基于 AFL++ 策略的简化版种子调度器。
     
+    策略：
+    1. 如果有 favored 种子，选择 execs 最小的 favored 种子（O(1)）
+    2. 否则，选择 execs 最小的非 favored 种子
+    """
+    
+    def pick(self, queue: SeedQueue) -> Seed:
+        if len(queue) == 0:
+            raise RuntimeError("Empty seed queue")
+        
+        # 策略 1: 优先选择 smallest_favored
+        if queue.smallest_favored_index is not None:
+            seed = queue.queue[queue.smallest_favored_index]
+            seed.execs += 1
+            return seed
+        
+        # 策略 2: 选择 execs 最小的非 favored 种子
+        min_execs = float('inf')
+        best_seed = None
+        
+        for seed in queue.queue:
+            if not seed.favored and seed.execs < min_execs:
+                min_execs = seed.execs
+                best_seed = seed
+        
+        if best_seed:
+            best_seed.execs += 1
+            return best_seed
+        
+        seed = queue.queue[0]
+        seed.execs += 1
+        return seed
+
+
+# ----- power scheduler -----
+
 class PowerScheduler:
     def assign(self, seed: Seed) -> int:
         raise NotImplementedError
@@ -51,11 +146,12 @@ class AFLPowerScheduler(PowerScheduler):
 
         score = 100  # 基础分
 
-        # 从 performance 字段解包数据
-        exec_time, bitmap_size = seed.performance
+        # 使用 exec_time_ns（已修正）
+        exec_time = seed.exec_time_ns
+        bitmap_size = seed.bitmap_size
 
         # 只有被评估过的种子才进行详细打分
-        if exec_time != -1:
+        if exec_time > 0 and exec_time < 1_000_000_000:  # 有效执行时间范围
             # 1. 执行速度奖励/惩罚
             if exec_time < self.FAST_EXEC_NS:
                 score *= 1.3
@@ -73,16 +169,15 @@ class AFLPowerScheduler(PowerScheduler):
             score *= 2.5
 
         # 4. 对已经大量执行的种子进行衰减
-        if seed.execs > 5:
-            # 使用log函数进行平滑衰减
-            decay_factor = 1 / math.log(seed.execs, 4) if seed.execs > 4 else 0.5
+        if seed.execs > 4:
+            decay_factor = 1 / math.log(seed.execs, 4)
             score *= max(0.2, decay_factor)
+        elif seed.execs == 0:
+            # 新种子，给予初始奖励
+            score *= 1.2
 
         # 5. 将分数映射到变异次数（能量）
-        # 简单的线性映射，假设基础分100对应约64次变异
         power = int((score / 100.0) * 64)
-
-        # 6. 限制在预设的范围内
         power = max(self.MIN_MUTATIONS, min(self.MAX_MUTATIONS, power))
 
         return power

@@ -121,6 +121,7 @@ class CoverageMonitor:
         # 1. 分析 coverage
         new_cov = 0
         bitmap_size = 0
+        coverage_set = set()
         if res.trace_bits:
             for i, byte_val in enumerate(res.trace_bits):
                 if byte_val == 0:
@@ -128,6 +129,7 @@ class CoverageMonitor:
                 bitmap_size += 1
                 bucket = self.count_class_lookup[byte_val]
                 edge_sig = (i, bucket)
+                coverage_set.add(edge_sig)
                 if edge_sig not in self.observed_coverage:
                     self.observed_coverage.add(edge_sig)
                     new_cov += 1
@@ -151,11 +153,11 @@ class CoverageMonitor:
         return ExecutionFeedback(
             new_coverage=new_cov,
             total_unique_edges=self.unique_edges,
+            coverage=coverage_set,
             crashed=is_crash,
             time_out=is_hang,
             exec_time_ns=res.exec_time_ns,
-            bitmap_size=bitmap_size,
-            trace_bits=res.trace_bits
+            bitmap_size=bitmap_size
         )
 
     def get_stats(self) -> dict:

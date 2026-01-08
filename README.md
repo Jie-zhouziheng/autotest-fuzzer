@@ -50,7 +50,7 @@ docker pull aflplusplus/aflplusplus
 docker run -it --rm \
   -v "$(pwd)":/src \
   -w /src \
-  my-afl-fuzzer \
+  my-afl-fuzzer-test \
   bash
 
 # 或使用官方镜像

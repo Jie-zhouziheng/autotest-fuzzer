@@ -1,6 +1,9 @@
 CC = afl-cc
 CXX = afl-c++
 
+# 自动检测 Python 命令：优先使用 python3，如果不存在则使用 python
+PYTHON := python3
+
 .PHONY: fuzz clean-crash clean-all setup quick-test
 
 TARGET ?= T01
@@ -73,7 +76,7 @@ fuzz: build setup
 	        FUZZ_TOTAL_TIMEOUT=$(TIME) \
 	        FUZZ_TIMEOUT_SEC=$(TIMEOUT) \
 	        FUZZ_MAX_QUEUE_SIZE=$(QUEUE); \
-	python3 main.py
+	$(PYTHON) main.py
 
 .PHONY: analysis
 
@@ -88,7 +91,7 @@ analysis: build setup
 	        FUZZ_TOTAL_TIMEOUT=$(TIME) \
 	        FUZZ_TIMEOUT_SEC=$(TIMEOUT) \
 	        FUZZ_MAX_QUEUE_SIZE=$(QUEUE); \
-	python3 -m cProfile -o perf.prof main.py --analyze
+	$(PYTHON) -m cProfile -o perf.prof main.py --analyze
 
 build:
 	@if [ -f $(BIN_OUT) ]; then \
@@ -109,9 +112,9 @@ setup:
 	fi
 
 install:
-	pip install sysv-ipc
-	pip install matplotlib
-	pip install snakeviz
+	$(PYTHON) -m pip install sysv-ipc
+	$(PYTHON) -m pip install matplotlib
+	$(PYTHON) -m pip install snakeviz
 # apt-get update && apt-get install -y libpcap-dev
 
 # only for test
@@ -119,7 +122,7 @@ TEST_BIN = target_program
 TEST_SRC  = test_program/target.c
 
 test: $(TEST_BIN)
-	python main.py
+	$(PYTHON) main.py
 
 $(TEST_BIN): $(TEST_SRC)
 	$(CC) -o $@ -fno-stack-protector -z execstack -no-pie $<
@@ -128,10 +131,10 @@ quick-test: clean-results test
 
 clean:
 	@echo "🧹 Cleaning all built binaries in targets/build..."
-	rm -rf targets/build/*
+	@rm -rf targets/build/*
 	@echo "🗑️  Cleaning all fuzzing outputs in $(OUTPUT_DIR)..."
-	rm -rf $(OUTPUT_DIR)
-	@echo "✨ Clean done."
+	@rm -rf $(OUTPUT_DIR)
+	@echo "🔧 Cleaning build artifacts in target source directories..."
 
 clean-results:
 	@echo "🧹 Cleaning results only..."

@@ -95,8 +95,13 @@ BUILT_FILE=""
 if [[ "$SRC_DIR" == *"binutils"* ]]; then
     # T01-T04: binutils
     echo "🔧 Building binutils with global static config..."
-    run_configure './configure --disable-shared CFLAGS="-g -static" CXXFLAGS="-g -static" LDFLAGS="-static"' "binutils"
-    run_make "" "binutils"
+    if [ ! -f Makefile ]; then
+        echo "  [1/2] Configuring..."
+        ./configure --disable-shared CFLAGS="-g -static" CXXFLAGS="-g -static" > /dev/null 2>&1
+    fi
+    echo "  [2/2] Compiling (this may take a while)..."
+    make -j$(nproc) > /dev/null 2>&1
+
     BUILT_FILE="binutils/$TARGET_NAME"
 
 elif [[ "$SRC_DIR" == *"libjpeg"* ]]; then
@@ -113,16 +118,20 @@ elif [[ "$SRC_DIR" == *"libjpeg"* ]]; then
 
 elif [[ "$SRC_DIR" == *"lua"* ]]; then
     # T08: lua
+    # lua 的构建需要在 src 目录下运行 make linux
     echo "🔧 Building lua..."
+    pushd src >/dev/null || error_exit "Cannot enter lua src directory"
     make clean 2>/dev/null || true
-    make -j$(nproc) CC="$CC" linux || error_exit "lua build failed"
+    # lua 的 Makefile 需要 CC 环境变量
+    make CC="$CC" linux || error_exit "lua build failed"
+    popd >/dev/null
     BUILT_FILE="src/lua"
 
 elif [[ "$SRC_DIR" == *"mjs"* ]]; then
     # T09: mjs
     echo "🔧 Building mjs..."
     rm -f mjs
-    $CC -DMJS_MAIN mjs.c -ldl -g -o mjs || error_exit "mjs build failed"
+    $CC -DMJS_MAIN mjs.c -ldl -g -o mjs
     BUILT_FILE="mjs"
 
 elif [[ "$SRC_DIR" == *"tcpdump"* ]]; then

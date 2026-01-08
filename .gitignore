@@ -5,15 +5,13 @@
 __pycache__/
 build/
 .pytest_cache/
+my-fuzzer/
 # Fuzzing 输出目录（所有结果）
 output/
 !output/.gitkeep
 # 编译产物
 targets/build/
 target_program
-*.o
-*.a
-*.so
 # 临时文件和共享内存
 .cur_input
 map1

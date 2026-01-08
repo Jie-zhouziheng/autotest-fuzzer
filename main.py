@@ -5,7 +5,7 @@ from fuzzer.mutator import *
 from fuzzer.scheduler import *
 from fuzzer.seed import *
 from fuzzer.monitor import *
-from fuzzer.evaluator import *    
+from fuzzer.evaluator import *
 from fuzzer.utils import *
 import os
 
@@ -44,9 +44,9 @@ def main():
         print("[-] No initial seeds, aborting.")
         return
     
-    scheduler = RoundRobinScheduler()
+    scheduler = AFLPlusPlusScheduler()
     power_scheduler = AFLPowerScheduler()
-    mutator = Mutator()
+    mutator = AFLPlusPlusMutator()
 
     executor = Executor(
         target_path=TARGET_PATH,

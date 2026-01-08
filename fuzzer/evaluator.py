@@ -62,16 +62,15 @@ class FuzzEvaluator:
             unique_paths = monitor_stats.get('unique_paths', 0)
             exec_speed = total_execs / elapsed if elapsed > 0 else 0
 
-            print("\n[=] Fuzzing finished!")
-            print(f"    Total executions : {total_execs}")
-            print(f"    Exec Speed       : {exec_speed:.2f} execs/s")
-            print(f"    Crashes found    : {crash_count}")
-            print(f"    Hang found       : {hang_count}")
-            print(f"    Unique paths     : {unique_paths}")
-            print(f"    Final queue size : {final_queue_size}")
-            print(f"    Time elapsed     : {elapsed:.2f} seconds")
-        else:
-            print("\n[!] Warning: monitor_stats not provided, cannot generate summary statistics")
+        print("\n[=] Fuzzing finished!")
+        print(f"    Total executions : {total_execs}")
+        print(f"    Exec Speed       : {exec_speed:.2f} execs/s")
+        print(f"    Crashes found    : {crash_count}")
+        print(f"    Hang found       : {hang_count}")
+        print(f"    Unique paths     : {unique_paths}")
+        print(f"    Final queue size : {final_queue_size}")
+        print(f"    Time elapsed     : {elapsed:.2f} seconds")
+        
         
         # 从 log_file 数据生成图表
         if log_data:
