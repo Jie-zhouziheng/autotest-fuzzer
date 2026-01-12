@@ -25,7 +25,6 @@ def load_seeds(seed_dir: str, queue: SeedQueue):
         raise FileNotFoundError(f"Seed dir not found: {seed_dir}")
 
     count = 0
-    # os.walk 会递归遍历 seed_dir
     for root, dirs, fnames in os.walk(seed_dir):
         for fname in fnames:
             if fname.startswith('.'):
@@ -35,7 +34,7 @@ def load_seeds(seed_dir: str, queue: SeedQueue):
             try:
                 with open(path, "rb") as f:
                     data = f.read()
-                    if not data: # 跳过空文件
+                    if not data:
                         continue
                     queue.add(Seed(data))
                     count += 1
@@ -59,6 +58,14 @@ def main():
     load_seeds(SEEDS_DIR, seed_queue)
     if len(seed_queue) == 0:
         print("[-] No initial seeds, aborting.")
+        return
+    
+    seed_queue.cull()
+    
+    enabled_count = seed_queue.get_enabled_seeds_count()
+    if enabled_count == 0:
+        print("[-] FATAL: We need at least one valid input seed that does not crash!")
+        print("    All seeds are disabled (likely all crashed). Aborting.")
         return
     
     scheduler = AFLPlusPlusScheduler()

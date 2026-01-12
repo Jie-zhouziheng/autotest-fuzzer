@@ -8,16 +8,21 @@ class Seed:
     execs: int = 0
     favored: bool = False
     crashed: bool = False
+    disabled: bool = False
     exec_time_ns: int = 1_000_000_000  # 默认 1 秒（纳秒）
     bitmap_size: int = 0
     coverage: Set[Tuple[int, int]] = field(default_factory=set)  # 边签名集合 (i, bucket)
     depth: int = 0  # 种子深度（从初始种子开始的变异轮数）
     total_new_coverage: int = 0  # 该种子产生的所有新覆盖边总数
+
     def mark_favored(self):
         self.favored = True
 
     def mark_crash(self):
+        """标记种子为 crash，并自动设置为 disabled（AFL++ 策略）"""
         self.crashed = True
+        self.disabled = True
+        self.favored = False  # Crash 绝不可能是 favored
 
     def __hash__(self):
         return hash(self.data)
@@ -30,8 +35,6 @@ class SeedQueue:
     def __init__(self):
         self.queue: list[Seed] = []
         self.seen = set()
-
-        # 记录每条边对应的"最佳"种子
         # Key: edge (Tuple[int, int]), Value: Seed
         self.top_rated: Dict[Tuple[int, int], Seed] = {}
         
@@ -40,6 +43,7 @@ class SeedQueue:
 
          # AFL++：execs 最小的 favored 种子索引
         self.smallest_favored_index: Optional[int] = None
+        self.queued_items: int = 0
 
 
     def add(self, seed: Seed):
@@ -62,42 +66,39 @@ class SeedQueue:
 
     def _calculate_metric(self, seed: Seed) -> float:
         """
-        计算种子的“代价”。
+        计算种子的"代价"。
         """
-        exec_time_ns = seed.exec_time_ns
-        if exec_time_ns <= 0:
-            # 如果还没执行过或数据无效，给一个默认惩罚值
+        if seed.exec_time_ns <= 0:
             return float('inf')
-
-        length = len(seed.data)
-        return exec_time_ns * length
+        return seed.exec_time_ns * len(seed.data)
 
     def _update_bitmap_score(self, seed: Seed):
         """
-        检查当前种子覆盖的每一条边，看它是否比该边目前的“擂主”更高效。
+        检查当前种子覆盖的每一条边，看它是否比该边目前的"擂主"更高效。
+        AFL++ 策略：disabled 种子不应该成为 top_rated。
         """
+        if seed.disabled:
+            return
 
         current_metric = self._calculate_metric(seed)
 
-        # 遍历这个种子覆盖的所有边
         for edge in seed.coverage:
             if edge not in self.top_rated:
-                # 这条边之前没见过，或者还没有归属，直接占领
                 self.top_rated[edge] = seed
             else:
                 rival = self.top_rated[edge]
-                rival_metric = self._calculate_metric(rival)
-
-                # 如果当前种子比之前的擂主更“快且小”
-                if current_metric < rival_metric:
+                # 如果现在的擂主被 disable 了，或者当前种子更优
+                if rival.disabled or current_metric < self._calculate_metric(rival):
                     self.top_rated[edge] = seed
 
     def cull(self):
         """
-        根据 top_rated 榜单，重新标记 favored 种子。
-        只保留那些处于 top_rated 榜单中的种子作为 favored。
+        AFL++ 的 cull_queue 逻辑。
+        1. 清除所有 favored 标记。
+        2. 遍历 top_rated，标记 winners 为 favored（跳过 disabled 种子）。
+        3. 更新 smallest_favored 辅助索引。
         """
-        # 1. 先把所有种子的 favored 标记清除 (除了刚开始的初始种子可能想保留)
+        # 1. 重置所有 favored 标记
         for seed in self.queue:
             seed.favored = False
 
@@ -106,38 +107,50 @@ class SeedQueue:
         min_execs = float('inf')
         
         for edge, best_seed in self.top_rated.items():
+            if best_seed.disabled:
+                continue
+            
             if not best_seed.favored:
                 best_seed.mark_favored()
             
             # 找到 execs 最小的 favored 种子
-            seed_idx = self.queue.index(best_seed)
-            if best_seed.execs < min_execs:
-                min_execs = best_seed.execs
-                self.smallest_favored_index = seed_idx
+            try:
+                seed_idx = self.queue.index(best_seed)
+                if best_seed.execs < min_execs:
+                    min_execs = best_seed.execs
+                    self.smallest_favored_index = seed_idx
+            except ValueError:
+                # 如果种子不在队列中（不应该发生），跳过
+                continue
 
 
     def update(self, data: bytes, parent_seed: Seed, feedback: ExecutionFeedback) -> bool:
         """
         Fuzzer 主循环调用的更新逻辑
+        AFL++ 策略：crash 种子自动标记为 disabled
         """
         # 更新父种子的统计信息
         parent_seed.execs += 1
         if feedback.exec_time_ns > 0:
-            # 更新执行时间（可以用平均值或最新值，这里用最新值）
+            # 更新执行时间
             parent_seed.exec_time_ns = feedback.exec_time_ns
         
         if feedback.crashed:
+            # AFL++ 策略：crash 种子自动标记为 disabled
             parent_seed.mark_crash()
 
         if feedback.new_coverage:
             new_seed = Seed(data)
             new_seed.exec_time_ns = feedback.exec_time_ns
-            new_seed.crashed = feedback.crashed
             new_seed.coverage = feedback.coverage  # 直接使用解析好的 coverage 集合
             new_seed.bitmap_size = feedback.bitmap_size
             new_seed.depth = parent_seed.depth + 1
             new_seed.total_new_coverage = feedback.new_coverage
             
+            # AFL++ 策略：如果种子是 crash，自动标记为 disabled
+            if feedback.crashed:
+                new_seed.mark_crash() 
+
             self.add(new_seed)  # add 方法里会自动调用 _update_bitmap_score
 
             # 控制 cull() 调用频率：每新增一定数量的覆盖边才调用一次
@@ -148,3 +161,7 @@ class SeedQueue:
 
             return True
         return False
+    
+    def get_enabled_seeds_count(self) -> int:
+        """返回非 disabled 种子的数量（AFL++ 策略：确保至少有一个有效种子）"""
+        return sum(1 for seed in self.queue if not seed.disabled)

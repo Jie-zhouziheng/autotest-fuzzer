@@ -25,7 +25,6 @@ class CoverageMonitor:
         self.last_saved_crash_time: Optional[float] = None
         self.last_saved_hang_time: Optional[float] = None
         self.last_new_find_time: Optional[float] = None  # AFL++ 中 last new find 指上次发现新路径的时间
-
         # log 
         self.last_print_time = self.start_time
         self.last_log_time = self.start_time
@@ -213,7 +212,7 @@ class CoverageMonitor:
         if res.is_crash:
             self.crash_count += 1
             save_data(input_data, 'crash', self.crash_count)
-            self.last_saved_crash_time = current_time  # 更新最后保存崩溃的时间
+            self.last_saved_crash_time = current_time
             
         if res.is_timeout:
             self.hang_count += 1
