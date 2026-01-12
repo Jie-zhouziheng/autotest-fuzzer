@@ -9,6 +9,7 @@ my-fuzzer/
 # Fuzzing 输出目录（所有结果）
 output/
 !output/.gitkeep
+afl-out/
 # 编译产物
 targets/build/
 target_program

@@ -1,5 +1,6 @@
 # monitor.py
 import os
+import sys
 import time
 from typing import Optional
 from .utils import ExecutionResult, ExecutionFeedback, save_data
@@ -20,20 +21,47 @@ class CoverageMonitor:
         self.data_id = 0
         self.unique_edges = 0
 
+        # 跟踪时间戳（相对时间，从开始到现在经过的秒数）
+        self.last_saved_crash_time: Optional[float] = None
+        self.last_saved_hang_time: Optional[float] = None
+        self.last_new_find_time: Optional[float] = None  # AFL++ 中 last new find 指上次发现新路径的时间
+
         # log 
         self.last_print_time = self.start_time
+        self.last_log_time = self.start_time
+        self.print_interval = 0.1
         self.log_file_path = os.path.join(PLOT_DIR, "logfile.txt")
         if not os.path.exists(PLOT_DIR):
             os.makedirs(PLOT_DIR)
         with open(self.log_file_path, "w") as f:
-            f.write("unix_time,elapsed_time,unique_edges,total_execs,crash_count,hang_count,exec_speed\n")
-
+            f.write("elapsed_time,unique_edges,total_execs,crash_count,hang_count,exec_speed,queue_size,last_new_find,last_crash,last_hang\n")
+        self._first_status_print = True  # 标记是否是第一次打印状态
+    
     def start_monitoring(self):
         self.start_time = time.time()
         self.last_print_time = self.start_time # 重置打印时间
-
+        self.last_log_time = self.start_time # 重置日志时间
         with open(self.log_file_path, "a") as f:
-            f.write(f"{self.start_time},0.00,0,0,0,0,0.00\n")
+            f.write(f"{0.00:.2f},0,0,0,0,0.00,0,0.00,0.00,0.00\n")
+
+    def _format_time(self, seconds: float) -> str:
+        """格式化时间为 days, hrs, min, sec 格式"""
+        if seconds is None or seconds <= 0:
+            return "none seen yet"
+        
+        days = int(seconds // 86400)
+        hours = int((seconds % 86400) // 3600)
+        minutes = int((seconds % 3600) // 60)
+        secs = int(seconds % 60)
+        
+        if days > 0:
+            return f"{days} days, {hours} hrs, {minutes} min, {secs} sec"
+        elif hours > 0:
+            return f"{hours} hrs, {minutes} min, {secs} sec"
+        elif minutes > 0:
+            return f"{minutes} min, {secs} sec"
+        else:
+            return f"{secs} sec"
 
     def _get_log_interval(self, elapsed: float, time_unit: str, exec_speed: float) -> float:
         """
@@ -68,31 +96,69 @@ class CoverageMonitor:
         # default to seconds
         return 1.0
 
-    def log_status(self, time_unit: str = "seconds"):
+    def log_status(self, queue_size: int = 0, time_unit: str = "seconds"):
+        """
+        显示和记录状态信息（原地刷新）
+        queue_size: 种子队列大小（需要从外部传入）
+        """
         current_time = time.time()
         elapsed = current_time - self.start_time
         exec_speed = self.total_execs / elapsed if elapsed > 0 else 0.0
-        interval = self._get_log_interval(elapsed, time_unit, exec_speed)
+        log_interval = self._get_log_interval(elapsed, time_unit, exec_speed)
         
-        if current_time - self.last_print_time >= interval:
-            exec_speed = self.total_execs / elapsed if elapsed > 0 else 0
-            time_str = time.strftime('%H:%M:%S')
+        should_log = current_time - self.last_log_time >= log_interval
+        should_print = current_time - self.last_print_time >= self.print_interval
 
-            status_msg = (
-                f"[{time_str}] "
-                f"Execs: {self.total_execs} | "
-                f"Speed: {exec_speed:.2f} exec/s | "
-                f"Paths: {self.unique_edges} | "
-                f"Crashes: {self.crash_count} | "
-                f"Hangs: {self.hang_count}"
-            )
-            print(status_msg)
+        
+        if should_print or should_log:
+            exec_speed = self.total_execs / elapsed if elapsed > 0 else 0
             
-            # 写入结构化的 CSV 格式到 log_file，方便 evaluator 解析
-            with open(self.log_file_path, "a") as f:
-                f.write(f"{current_time},{elapsed:.2f},{self.unique_edges},{self.total_execs},{self.crash_count},{self.hang_count},{exec_speed:.2f}\n")
+            # 计算相对时间（从开始到现在经过的秒数）
+            last_new_find_elapsed = self.last_new_find_time - self.start_time if self.last_new_find_time else None
+            last_crash_elapsed = self.last_saved_crash_time - self.start_time if self.last_saved_crash_time else None
+            last_hang_elapsed = self.last_saved_hang_time - self.start_time if self.last_saved_hang_time else None
             
-            self.last_print_time = current_time
+            # 格式化显示（限制长度以确保对齐）
+            run_time_str = self._format_time(elapsed)[:38]
+            last_new_find_str = (self._format_time(last_new_find_elapsed) if last_new_find_elapsed is not None else "none seen yet")[:38]
+            last_crash_str = (self._format_time(last_crash_elapsed) if last_crash_elapsed is not None else "none seen yet")[:38]
+            last_hang_str = (self._format_time(last_hang_elapsed) if last_hang_elapsed is not None else "none seen yet")[:38]
+            
+            # AFL++ 风格的状态显示（原地刷新）
+            # 不要动了，已经对齐了！！！
+            if should_print:
+                status_lines = [
+                    "┌─ process timing ──────────────────────────┬──────────── overall results ─────┐",
+                    f"│        run time : {run_time_str:<20}    │    corpus count  : {queue_size:5d}         │",
+                    f"│   last new find : {last_new_find_str:<20}    │    saved crashes : {self.crash_count:5d}         │",
+                    f"│last saved crash : {last_crash_str:<20}    │    saved hangs   : {self.hang_count:5d}         │",
+                    f"│ last saved hang : {last_hang_str:<20}    │                                  │",
+                    "├─ map coverage ────────────────────────────┼─ execution stats ────────────────┤",
+                    f"│    map density : {self.unique_edges:>5d} edges              │ total execs : {self.total_execs:>10,}         │",
+                    f"│                                           │  exec speed : {exec_speed:>8.0f}/sec       │",
+                    "└───────────────────────────────────────────┴──────────────────────────────────┘"
+                ]
+                
+                if self._first_status_print:
+                    status_text = "\n".join(status_lines)
+                    self._first_status_print = False
+                else:
+                    # 向上移动 8 行（状态框的行数），然后覆盖
+                    status_text = f"\033[8A\r" + "\n".join(status_lines)
+                
+                sys.stdout.write(status_text)
+                sys.stdout.flush()
+
+                self.last_print_time = current_time
+            
+            # 写入结构化的 CSV 格式到 log_file
+            if should_log:
+                last_new_find_val = last_new_find_elapsed if last_new_find_elapsed is not None else 0.00
+                last_crash_val = last_crash_elapsed if last_crash_elapsed is not None else 0.00
+                last_hang_val = last_hang_elapsed if last_hang_elapsed is not None else 0.00
+                with open(self.log_file_path, "a") as f:
+                    f.write(f"{elapsed:.2f},{self.unique_edges},{self.total_execs},{self.crash_count},{self.hang_count},{exec_speed:.2f},{queue_size},{last_new_find_val:.2f},{last_crash_val:.2f},{last_hang_val:.2f}\n")
+                self.last_log_time = current_time
     
     def get_elapsed(self) -> float:
         if self.start_time is None:
@@ -115,7 +181,6 @@ class CoverageMonitor:
         """
         if self.start_time is None:
             raise RuntimeError("Monitor not started! Call start_monitoring() first.")
-        elapsed = self.get_elapsed()
         self.total_execs += 1
 
         # 1. 分析 coverage
@@ -138,16 +203,22 @@ class CoverageMonitor:
         is_crash = res.is_crash
         is_hang = res.is_timeout
 
-        # 2. 文件保存
+        # 2. 文件保存并更新时间戳
+        current_time = time.time()
         if new_cov > 0:
             self.data_id += 1 # 也可以作为 queue 的计数器
             save_data(input_data, 'queue', self.data_id)
+            self.last_new_find_time = current_time  # 更新最后发现新路径的时间（AFL++ 的 last new find）
+            
         if res.is_crash:
             self.crash_count += 1
             save_data(input_data, 'crash', self.crash_count)
+            self.last_saved_crash_time = current_time  # 更新最后保存崩溃的时间
+            
         if res.is_timeout:
             self.hang_count += 1
             save_data(input_data, 'hang', self.hang_count)
+            self.last_saved_hang_time = current_time  # 更新最后保存超时的时间
 
         # 3. 组装反馈
         return ExecutionFeedback(
@@ -161,12 +232,24 @@ class CoverageMonitor:
         )
 
     def get_stats(self) -> dict:
+        """返回完整的统计信息，用于生成报告和 fuzzer_stats"""
+        current_time = time.time()
+        elapsed = self.get_elapsed()
+        exec_speed = self.total_execs / elapsed if elapsed > 0 else 0.0
+        
         return {
             "total_execs": self.total_execs,
             "crash_count": self.crash_count,
-            "hang_count" : self.hang_count,
+            "hang_count": self.hang_count,
             "unique_paths": self.unique_edges,
-            "elapsed_time": self.get_elapsed(),
+            "unique_edges": self.unique_edges,  # 别名，保持一致性
+            "elapsed_time": elapsed,
+            "exec_speed": exec_speed,
+            "start_time": int(self.start_time) if self.start_time else int(current_time),
+            "last_update": int(current_time),
+            "last_new_find_time": int(self.last_new_find_time) if self.last_new_find_time else None,
+            "last_saved_crash_time": int(self.last_saved_crash_time) if self.last_saved_crash_time else None,
+            "last_saved_hang_time": int(self.last_saved_hang_time) if self.last_saved_hang_time else None,
         }
 
     def _build_count_class_lookup(self):
@@ -190,4 +273,3 @@ class CoverageMonitor:
             else:
                 lookup[i] = 7
         return lookup
-    

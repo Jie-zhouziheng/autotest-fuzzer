@@ -27,6 +27,7 @@ class Fuzzer:
         self.executor = executor
         self.monitor = monitor
         self.evaluator = evaluator
+        self._should_stop = False  # 信号停止标志
 
         if frequency is None:
             self.frequency = get_frequency_by_timeout()
@@ -36,15 +37,23 @@ class Fuzzer:
     def run(self):
         self.monitor.start_monitoring()
 
-        while self.monitor.should_continue():
-            self.fuzz_once()
-            self.monitor.log_status(self.frequency) # log middle status
+        try:
+            while self.monitor.should_continue() and not self._should_stop:
+                self.fuzz_once()
+                self.monitor.log_status(len(self.queue), self.frequency)
+        except KeyboardInterrupt:
+            print("\n[!] Interrupted by user (Ctrl+C)")
+            self._should_stop = True
+        finally:
+            # 无论正常结束还是被中断，都生成报告
+            self.evaluator.generate_report(
+                self.monitor.get_stats(),
+                len(self.queue)
+            )
 
-        self.evaluator.generate_report(
-            self.monitor.get_stats(),
-            len(self.queue),
-            self.frequency
-        )
+    def stop(self):
+        """外部调用停止 fuzzer"""
+        self._should_stop = True
 
     def fuzz_once(self):
         seed = self.scheduler.pick(self.queue)
@@ -52,7 +61,7 @@ class Fuzzer:
         inputs = self.mutator.mutate(seed, self.queue, power)
 
         for data in inputs:
-            if not self.monitor.should_continue():
+            if not self.monitor.should_continue() or self._should_stop:
                 break
             result = self.executor.run(data)
             feedback = self.monitor.process_execution(data, result)

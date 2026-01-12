@@ -6,64 +6,73 @@ PYTHON := python3
 
 .PHONY: fuzz clean-crash clean-all setup quick-test
 
+# ---------------------- config ----------------------
 TARGET ?= T01
-# Fuzzer 配置参数（可通过 make 参数传入）
-TIME ?= 3600        # 总运行时间（秒），默认 1 小时
+TIME ?= 86400      # 总运行时间（秒），默认 24 小时
 TIMEOUT ?= 2         # 单次执行超时（秒）
 QUEUE ?= 500         # 最大队列大小
 
-# 1. 找到目标文件
-
-# --- 目标元数据映射 ---
 ifeq ($(TARGET), T01)
     TNAME := cxxfilt
     TSRC  := targets/binutils-2.28
     TCMD  := 
+	TIMEOUT := 2
 else ifeq ($(TARGET), T02)
     TNAME := readelf
     TSRC  := targets/binutils-2.28
     TCMD  := -a @@ @@
+	TIMEOUT := 3
 else ifeq ($(TARGET), T03)
     TNAME := nm-new
     TSRC  := targets/binutils-2.28
     TCMD  := @@
+	TIMEOUT := 2
 else ifeq ($(TARGET), T04)
     TNAME := objdump
     TSRC  := targets/binutils-2.28
     TCMD  := -d @@
+	TIMEOUT := 5
 else ifeq ($(TARGET), T05)
     TNAME := djpeg
     TSRC  := targets/libjpeg-turbo-3.0.4
     TCMD  := @@
+	TIMEOUT := 5
 else ifeq ($(TARGET), T06)
     TNAME := readpng
     TSRC  := targets/libpng-1.6.29
     TCMD  := 
+	TIMEOUT := 5
 else ifeq ($(TARGET), T07)
     TNAME := xmllint
     TSRC  := targets/libxml2-2.13.4
     TCMD  := @@
+	TIMEOUT := 5
 else ifeq ($(TARGET), T08)
     TNAME := lua
     TSRC  := targets/lua-5.4.7
     TCMD  := @@
+	TIMEOUT := 8
 else ifeq ($(TARGET), T09)
     TNAME := mjs
     TSRC  := targets/mjs-2.20.0
     TCMD  := -f @@
+	TIMEOUT := 5
 else ifeq ($(TARGET), T10)
     TNAME := tcpdump
     TSRC  := targets/tcpdump-tcpdump-4.99.5
     TCMD  := -nr @@
+	TIMEOUT := 5
 endif
 
-# --- 路径处理 (全部转为绝对路径) ---
+# ---------------------- path ----------------------
 OUTPUT_DIR := $(abspath output)
 BIN_OUT := $(abspath targets/build/$(TNAME))
 SDIR    := $(abspath seeds/$(TNAME))
 ODIR    := $(abspath output/$(TNAME))
 TSRC    := $(abspath $(TSRC))
 
+
+# ---------------------- fuzzing ----------------------
 .PHONY: fuzz build setup clean
 
 fuzz: build setup
@@ -77,21 +86,6 @@ fuzz: build setup
 	        FUZZ_TIMEOUT_SEC=$(TIMEOUT) \
 	        FUZZ_MAX_QUEUE_SIZE=$(QUEUE); \
 	$(PYTHON) main.py
-
-.PHONY: analysis
-
-analysis: build setup
-	@echo "🔍 Starting Performance Analysis for $(TNAME)..."
-	@echo "📊 Mode: cProfile + Execution Speed Stats"
-	@echo "⚙️  Configuration: TIME=$(TIME)s, TIMEOUT=$(TIMEOUT)s, QUEUE=$(QUEUE)"
-	@export FUZZ_TARGET_PATH=$(BIN_OUT) \
-	        FUZZ_TARGET_CMD="$(TCMD)" \
-	        FUZZ_SEEDS_DIR=$(SDIR) \
-	        FUZZ_OUTPUT_DIR=$(ODIR) \
-	        FUZZ_TOTAL_TIMEOUT=$(TIME) \
-	        FUZZ_TIMEOUT_SEC=$(TIMEOUT) \
-	        FUZZ_MAX_QUEUE_SIZE=$(QUEUE); \
-	$(PYTHON) -m cProfile -o perf.prof main.py --analyze
 
 build:
 	@if [ -f $(BIN_OUT) ]; then \
@@ -117,7 +111,34 @@ install:
 	$(PYTHON) -m pip install snakeviz
 # apt-get update && apt-get install -y libpcap-dev
 
-# only for test
+
+# ---------------------- afl-fuzz ----------------------
+# afl-fuzz -i seeds/tcpdump -o output/tcpdump -- ./tcpdump -nr @@
+# hidden command for afl-fuzz
+AFL_OUTPUT_DIR := $(abspath afl-out/$(TNAME))
+
+afl-fuzz-target: build
+	@echo "🚀 Starting AFL++ fuzzing on $(TNAME)..."
+	@echo "📁 Input seeds: $(SDIR)"
+	@echo "📁 Output directory: $(AFL_OUTPUT_DIR)"
+	@echo "⚙️  Command: $(BIN_OUT) $(TCMD)"
+	@echo "⏱️  Timeout: $(TIMEOUT)s ($$(($(TIMEOUT) * 1000))ms)"
+	@mkdir -p $(SDIR) $(AFL_OUTPUT_DIR)
+	@chmod -R a+rwX $(AFL_OUTPUT_DIR) 2>/dev/null || true
+	@if [ -z "$$(ls -A $(SDIR) 2>/dev/null)" ]; then \
+		echo "⚠️  Warning: Seed directory is empty, creating default seed..."; \
+		echo "test" > $(SDIR)/default; \
+	fi
+	@if [ -n "$(TCMD)" ]; then \
+		echo "💡 Using file-based fuzzing (with @@)"; \
+		AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES=1 afl-fuzz -t $$(($(TIMEOUT) * 1000)) -i $(SDIR) -o $(AFL_OUTPUT_DIR) -- $(BIN_OUT) $(subst @@,@@,$(TCMD)); \
+	else \
+		echo "💡 Using stdin-based fuzzing"; \
+		AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES=1 afl-fuzz -t $$(($(TIMEOUT) * 1000)) -i $(SDIR) -o $(AFL_OUTPUT_DIR) -- $(BIN_OUT); \
+	fi
+
+
+# ---------------------- only for test ----------------------
 TEST_BIN = target_program
 TEST_SRC  = test_program/target.c
 
@@ -135,6 +156,7 @@ clean:
 	@echo "🗑️  Cleaning all fuzzing outputs in $(OUTPUT_DIR)..."
 	@rm -rf $(OUTPUT_DIR)
 	@echo "🔧 Cleaning build artifacts in target source directories..."
+
 
 clean-results:
 	@echo "🧹 Cleaning results only..."
