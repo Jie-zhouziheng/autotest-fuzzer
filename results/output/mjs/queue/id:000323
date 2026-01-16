@@ -1,2 +1,0 @@
-!(function() {}) === 'function' && typeof null === 'null' &&
-    typeof undefined === 'undefined';

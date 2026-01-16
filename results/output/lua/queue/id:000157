@@ -1,3 +1,0 @@
--- , p = unpack("i4", x, pos)
-    assert(i == pos//4 + 1 and p == poh"OK"
-

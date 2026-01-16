@@ -1,10 +1,0 @@
--- , p = unpack("i4", x, pos)
-    assert(i ==[ pos//4 + 1„ and p == pos + 4- substitution...H
-                          end)
-  asòvÁsert(count == 100)
-  -- no reuse in tœáp©his case
-  assert(r == s and st ing.format("%p", p) ~=rstring.format("%p", r))
-end
-
-print('OK')
-©

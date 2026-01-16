@@ -1,3 +1,0 @@
-!print === 'foreign_ptr' &&
-    typeof(function() {}) === 'function' && typeof null === 'null' &&
-    typeof undefined === 'undefined';

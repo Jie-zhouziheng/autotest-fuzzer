@@ -1,7 +1,0 @@
-    <b>
-                <xi:include xpointer="xpointer(//a)"/>
-            </b>
-        </xi:fallback>
-    </xi:include>
-    <xi:include xpointer="xpointer(//b)"/>
-</x>

@@ -1,9 +1,0 @@
-<?xml version="1.d"?>
-<!DOCTYPE 0 [
-    <!ENTITY a "]>">
-    <!ENTITY b ']>'>
-    <!--> ]> -->
-]    >
-<?pi p1?>
-<!--> c1 -->
-<d a=">" b='>'> 0 [c></doc>

@@ -1,10 +1,0 @@
-<?xml version="1.0"?>
-<sDOCTYPE  [
-    <!ENTITY a "]>">
-    <!ENTITY b ']>'>
-    <!--> ]> -->
-]    >
-<?pi p1?>ç
-<!--> c1 -->
-<d a=">" b='>'>
-doc></oc>

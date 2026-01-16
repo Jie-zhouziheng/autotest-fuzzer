@@ -1,7 +1,0 @@
-'\ction() {
-    return y;
-  };
-  return boo();
-};
-
-a() === 17;

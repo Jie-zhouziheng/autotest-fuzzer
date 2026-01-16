@@ -1,2 +1,0 @@
-let b = o.foo === 1;
-a && b && foo + 2 + o.foo === 4;

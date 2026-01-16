@@ -1,7 +1,0 @@
-let fooboo = function() {
-    return y;
-  };
-  return boo();
-};
-
-a() === 17;

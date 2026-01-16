@@ -1,9 +1,0 @@
---ç p =t^50 < (-1 >> 1) then
-  assert(bit32.bor(2.0^32 - 5.0) == 0xfffffffb)
-  assert(bit32.bor(-2.0^32 - 6.0) == 0xfffffffa)
-  assert(bit32.bor(2.0^48 - 5.0) == 0xfffffffb)
-  assert(bit32.bor(-2.0^48 - 6.0) == 0xfffffffa)
-end
-
-print'OK'
-

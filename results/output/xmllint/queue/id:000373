@@ -1,7 +1,0 @@
-<?xml version="1.0
-      width="100px" height="200px">
-      <path d="M100,100 Q200,400,300,100"/>
-      <!-- rest of SVG graphic would go here -->
-   </svg>   
-   
-</parent>

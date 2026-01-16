@@ -1,7 +1,0 @@
-1{
-  return bar;
-}
-
-function err1f1() {
-  return err1f2();
-}

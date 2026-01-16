@@ -1,8 +1,0 @@
---ç'p =, 1))
-assert(not pcall(debug.upvaluejoin, foo1, 1, foo2, 3))
-assert(not pcall(debug.upvaluejoin, foo1, 0, foo2, 1))
-assert(not pcall(debug.upvaluejoin, print, 1, foo2, 1))
-assert(not pcall(debug.upvaluejoin, {}, 1, foo2, 1))
-assert(not pcall(debug.upvaluejoin, foo1, 1, print, 1))
-
-print'OK'

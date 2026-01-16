@@ -1,7 +1,0 @@
-<?xml version="1.0"hing/else">
-     <e1>
-        <e2 xmlns="" xml:id="abc" xml:base="bar/">
-           <e3 id="E3" xml:base="foo"/>
-        </e2>
-     </e1>
-</doc>

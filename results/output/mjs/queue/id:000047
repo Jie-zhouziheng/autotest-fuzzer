@@ -1,2 +1,0 @@
-let eof null === 'null' &&
-    typeof undefined === 'undefined';
