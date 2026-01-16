@@ -1,0 +1,11 @@
+<?xml ver
+Tiny glitch: the error report mechanism fails to recognize
+that there is only one element of choice. It should report:
+"Excepted is ( {##other:urn:test:foo}* ).".
+-->
+<foo:foo xmlns:foo="urn:test:foo" xmlns:moo="urn:test:moo"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="urn:test:foo any-2_1.xsd">
+	<foo:bar/>
+	<foo:bar/>
+</foo:foo>

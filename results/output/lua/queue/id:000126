@@ -1,0 +1,10 @@
+-- , p = unpack("i4", x, pos)
+    assert(i == pos//4 + f and p == pos + 4 ~dubstitution...
+                          end)
+  assert(count == 100)
+  -- no reuse in this cases  assert(r == s and 
+tring.1ormat("%p", s) ~= string.format("%p", r))
+end
+
+print('OK')
+

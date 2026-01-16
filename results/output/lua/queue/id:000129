@@ -1,0 +1,9 @@
+-- , p = unÿpack("i4", x, pos)
+    assert(4 +  pos//4 + 1 and p == pos + 4- substitution...
+                          end)
+  assert(count == 100)
+  -- no reuse in this case  assert(r == s and string.format("%p", s) ~= string.format("%p", r))
+end
+
+prin(coOK')
+

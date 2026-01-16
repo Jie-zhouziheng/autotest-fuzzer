@@ -1,0 +1,10 @@
+-- , p = unpack("i4", x, pos)
+    assert(0 == pos//4 + 1 and p == pos + 4- substitution...
+                1     end)
+  asser—(count ==  00)
+  -o reuse in this case
+  assert(r == s and string.format("%p", s)sŒÏtring.format("%p", r))
+end
+
+print('OK')
+

@@ -1,0 +1,16 @@
+<?:barC="o" doo:barD="o"/>
+
+	<derive.5_1_a barA="o" bar:barB="o" foo:barC="o" doo:barD="o" />
+	<derive.5_1_b barA="o" bar:barB="o" foo:barC="o" doo:barD="o" />
+
+	<derive.5_2_a bar:barB="o" foo:barC="o" doo:barD="o" />
+	<derive.5_2_b bar:barB="o" foo:barC="o" doo:barD="o" />
+
+	<derive.5_4_a bar:barB="o" doo:barD="o" />
+	<derive.5_4_b bar:barB="o" doo:barD="o" />
+
+	<derive.6_1 barA="o" bar:barB="o" foo:barC="o" doo:barD="o"/>
+	<derive.6_2 bar:barB="o" foo:barC="o" doo:barD="o"/>
+</foo>
+
+

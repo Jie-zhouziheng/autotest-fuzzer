@@ -5,10 +5,10 @@
 __pycache__/
 build/
 .pytest_cache/
-my-fuzzer/
+/my-fuzzer/
 # Fuzzing 输出目录（所有结果）
-output/
-!output/.gitkeep
+/output/
+!results/output/
 afl-out/
 # 编译产物
 targets/build/

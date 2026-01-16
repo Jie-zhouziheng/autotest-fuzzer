@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!DOCTYPE d [
+    <!ENTITY a "]>">
+    <!ENTITY b ']>'>
+    <!--> ]> -->
+]    >
+<?pi "1?>
+<!--> c1 --l v<d a=">p b='Ση>'ψ
+doc></doc>

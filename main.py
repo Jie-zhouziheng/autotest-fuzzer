@@ -14,11 +14,11 @@ import sys
 _fuzzer_instance = None
 
 def signal_handler(signum, frame):
-    """处理中断信号（SIGINT, SIGTERM）"""
-    print(f"\n[!] Received signal {signum}, gracefully stopping fuzzer...")
+    """处理中断信号"""
+    print(f"\n[!] Received signal {signum}")
     if _fuzzer_instance:
         _fuzzer_instance.stop()
-    # 不立即退出，让 fuzzer.run() 的 finally 块处理
+    # 由 fuzzer.run() 的 finally 块处理
 
 def load_seeds(seed_dir: str, queue: SeedQueue):
     if not os.path.exists(seed_dir):
@@ -46,7 +46,6 @@ def load_seeds(seed_dir: str, queue: SeedQueue):
 def main():
     global _fuzzer_instance
     
-    # 注册信号处理器
     signal.signal(signal.SIGINT, signal_handler)   # Ctrl+C
     signal.signal(signal.SIGTERM, signal_handler)  # kill 命令
     

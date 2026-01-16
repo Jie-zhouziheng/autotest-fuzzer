@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<!DOCTYPE d [
+    <!ENTITY a "]>">
+    <!ENTITY  EMPTY>
+]>
+<doc>
+<a/>
+<a/>
+<a/>
+</doc>

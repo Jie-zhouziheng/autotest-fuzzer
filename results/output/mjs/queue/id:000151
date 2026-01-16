@@ -1,0 +1,2 @@
+le 'xx' &&
+    o.d[4] === undefined;

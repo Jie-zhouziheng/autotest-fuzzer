@@ -16,53 +16,31 @@ class FuzzEvaluator:
         self.start_time = time.time()
 
     def read_log_file(self):
-        """从 log_file 读取数据，返回解析后的数据列表
-        
-        新格式: elapsed_time,unique_edges,total_execs,crash_count,hang_count,exec_speed,queue_size,last_new_find,last_crash,last_hang
-        """
-        log_data = []
+        """从 log_file 读取数据，返回解析后的数据列表"""
         if not os.path.exists(self.log_file_path):
-            return log_data
-        
+            return []
+
         try:
             with open(self.log_file_path, "r") as f:
                 reader = csv.DictReader(f)
-                for row in reader:
-                    # 新格式字段
-                    entry = {
+                return [
+                    {
                         'elapsed_time': float(row['elapsed_time']),
                         'unique_edges': int(row['unique_edges']),
                         'total_execs': int(row['total_execs']),
                         'crash_count': int(row['crash_count']),
                         'hang_count': int(row['hang_count']),
-                        'exec_speed': float(row['exec_speed'])
+                        'exec_speed': float(row['exec_speed']),
+                        'queue_size': int(row['queue_size']),
+                        'last_new_find': float(row['last_new_find']),
+                        'last_crash': float(row['last_crash']),
+                        'last_hang': float(row['last_hang']),
                     }
-                    # 可选字段
-                    if 'queue_size' in row:
-                        entry['queue_size'] = int(row['queue_size']) if row['queue_size'] else 0
-                    else:
-                        entry['queue_size'] = 0
-                    
-                    if 'last_new_find' in row:
-                        entry['last_new_find'] = float(row['last_new_find']) if row['last_new_find'] else 0.0
-                    else:
-                        entry['last_new_find'] = 0.0
-                    
-                    if 'last_crash' in row:
-                        entry['last_crash'] = float(row['last_crash']) if row['last_crash'] else 0.0
-                    else:
-                        entry['last_crash'] = 0.0
-                    
-                    if 'last_hang' in row:
-                        entry['last_hang'] = float(row['last_hang']) if row['last_hang'] else 0.0
-                    else:
-                        entry['last_hang'] = 0.0
-                    
-                    log_data.append(entry)
+                    for row in reader
+                ]
         except Exception as e:
             print(f"[!] Warning: Failed to read log file: {e}")
-        
-        return log_data
+            return []
 
     def generate_report(self, monitor_stats: dict = None, final_queue_size: int = 0):
         """
@@ -70,10 +48,6 @@ class FuzzEvaluator:
         - 总体数据从 monitor_stats 获取（用于打印统计信息）
         - 图表数据从 log_file 读取（用于绘制曲线）
         - 根据实际执行时间自动选择合适的时间单位
-        
-        Args:
-            monitor_stats: 监控统计数据
-            final_queue_size: 最终队列大小
         """
         # 从 log_file 读取数据用于绘制图表
         log_data = self.read_log_file()
@@ -165,10 +139,6 @@ class FuzzEvaluator:
     def _plot_from_log_data(self, log_data, time_unit: str = 'hours'):
         """
         从 log_file 数据绘制覆盖率曲线和其他图表
-        
-        Args:
-            log_data: 从 log_file 读取的数据列表
-            time_unit: 时间单位，可选 'seconds', 'minutes', 'hours'
         """
         if not log_data:
             return
@@ -207,7 +177,7 @@ class FuzzEvaluator:
             exec_speeds = np.insert(exec_speeds, 0, exec_speeds[0] if len(exec_speeds) > 0 else 0)
             queue_sizes = np.insert(queue_sizes, 0, queue_sizes[0] if len(queue_sizes) > 0 else 0)
         
-        # 1. 覆盖率曲线 - 独立图表
+        # 1. 覆盖率曲线 
         plt.figure(figsize=(10, 6))
         plt.plot(time_data, unique_edges, label="Edges Discovered", color='#1f77b4', linewidth=2)
         plt.xlabel(time_label, fontsize=11)
@@ -226,7 +196,7 @@ class FuzzEvaluator:
         plt.close()
         print(f"[+] Coverage plot saved to: {coverage_plot_path}")
         
-        # 2. Crash 数量曲线 - 独立图表
+        # 2. Crash 数量曲线
         plt.figure(figsize=(10, 6))
         plt.plot(time_data, crash_counts, label="Crashes Found", color='#d62728', linewidth=2)
         plt.xlabel(time_label, fontsize=11)
@@ -250,7 +220,7 @@ class FuzzEvaluator:
         plt.close()
         print(f"[+] Crash plot saved to: {crash_plot_path}")
         
-        # 3. Hang 数量曲线（如果有数据）
+        # 3. Hang 数量曲线
         if len(hang_counts) > 0 and max(hang_counts) > 0:
             plt.figure(figsize=(10, 6))
             plt.plot(time_data, hang_counts, label="Hangs Found", color='#ff7f0e', linewidth=2)
@@ -294,7 +264,7 @@ class FuzzEvaluator:
             plt.close()
             print(f"[+] Execution speed plot saved to: {speed_plot_path}")
         
-        # 5. 队列大小曲线（如果有数据）
+        # 5. 队列大小曲线
         if len(queue_sizes) > 0 and max(queue_sizes) > 0:
             plt.figure(figsize=(10, 6))
             plt.plot(time_data, queue_sizes, label="Queue Size", color='#9467bd', linewidth=2)

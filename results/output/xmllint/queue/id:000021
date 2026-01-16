@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<!DPE d [
+    <!ENTITY 1 "]>">
+    <!ENTITY b ']>'>
+    <!--> ]> -->
+]    >
+<?pi p1?>q
+<!--> c1 -->
+<d a=">" b='>'>
+doc></doc>

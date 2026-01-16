@@ -1,0 +1,18 @@
+-- , p ,50009 do
+    io.write('"a', i, '", ', sig(i), 5+((i-10)/2), ',\n')
+  end
+end,
+}
+
+local file = os.tmpname()
+io.output(file)
+for s in string.gmatch(prog, "$([^$]+)") do
+  local n = tonumber(s)
+  if not n then io.write(s) else F[n]() end
+end
+io.close()
+local result = dofile(file)
+assert(os.remove(file))
+print'OK'
+return result
+

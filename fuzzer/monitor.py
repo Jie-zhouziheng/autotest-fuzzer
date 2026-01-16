@@ -65,9 +65,6 @@ class CoverageMonitor:
     def _get_log_interval(self, elapsed: float, time_unit: str, exec_speed: float) -> float:
         """
         根据记录的时间单位与当前执行速度，决定日志记录频率（间隔，单位：秒）
-        - seconds: 前几秒高频记录，之后目标是每 ~50 次执行记录一次，区间 [0.1s, 0.5s]
-        - minutes: 目标是每 ~1000 次执行记录一次，区间 [10s, 120s]，长时间运行时略放宽
-        - hours  : 使用「原先」的自适应机制（<10min/10s，<1h/30s，其后/60s），适合超长时间运行
         """
         if time_unit == "seconds":
             if elapsed < 5.0:
@@ -205,9 +202,9 @@ class CoverageMonitor:
         # 2. 文件保存并更新时间戳
         current_time = time.time()
         if new_cov > 0:
-            self.data_id += 1 # 也可以作为 queue 的计数器
+            self.data_id += 1 # 也作为 queue 的计数器
             save_data(input_data, 'queue', self.data_id)
-            self.last_new_find_time = current_time  # 更新最后发现新路径的时间（AFL++ 的 last new find）
+            self.last_new_find_time = current_time  # 更新最后发现新路径的时间
             
         if res.is_crash:
             self.crash_count += 1

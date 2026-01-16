@@ -21,10 +21,7 @@ def initialize_directories():
         if not os.path.exists(d):
             os.makedirs(d, exist_ok=True)
             print(f"[+] Created directory: {d}")
-        else:
-            # 可选：如果目录已存在，是否需要清空旧的实验数据？
-            # print(f"[*] Directory already exists: {d}")
-            pass
+    
     if not os.path.exists(SEEDS_DIR):
         print(f"[!] Warning: Seed directory {SEEDS_DIR} not found!")
 
@@ -61,16 +58,12 @@ class ExecutionResult:
 @dataclass
 class ExecutionFeedback:
     """
-    执行反馈，包含解析好的 coverage 集合，避免在 seed.py 中重复解析。
+    执行反馈，包含解析好的 coverage 集合
     """
-    # 覆盖相关
     new_coverage: int              # 本次新增的边数量
     total_unique_edges: int        # 当前全局唯一边总数
     coverage: Set[Tuple[int, int]] # 本次执行激活的边集合（解析为 (i, bucket) 签名）
-    # 稳定性 / 结果相关
-    crashed: bool                  # 是否 crash
-    time_out: bool                 # 是否超时
-    # 性能相关
-    exec_time_ns: int              # 本次执行耗时
-    # 覆盖"密度"相关
+    crashed: bool                  
+    time_out: bool                 
+    exec_time_ns: int              
     bitmap_size: int               # 本次 trace_bits 中非零字节数量

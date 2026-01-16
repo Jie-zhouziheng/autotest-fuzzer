@@ -1,0 +1,3 @@
+let foo = err2f2() {
+  return bar;
+}

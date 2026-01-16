@@ -1,0 +1,11 @@
+<?     <ietf:e12 at="2">
+        <ietf:e121 xml:base="/xmlbase121/"/>
+      </ietf:e12>
+    </ietf:e1>
+    <ietf:e2>
+      <ietf:e21 xml:base="/xmlbase21/"/>
+    </ietf:e2>
+    <ietf:e3>
+      <ietf:e31 at="3"/>
+    </ietf:e3>
+</ietf:c14n11XmlBaseDoc1>

@@ -105,13 +105,6 @@ setup:
 		echo -n $(TSEED) > $(SDIR)/seed_init; \
 	fi
 
-install:
-	$(PYTHON) -m pip install sysv-ipc
-	$(PYTHON) -m pip install matplotlib
-	$(PYTHON) -m pip install snakeviz
-# apt-get update && apt-get install -y libpcap-dev
-
-
 # ---------------------- afl-fuzz ----------------------
 # afl-fuzz -i seeds/tcpdump -o output/tcpdump -- ./tcpdump -nr @@
 # hidden command for afl-fuzz

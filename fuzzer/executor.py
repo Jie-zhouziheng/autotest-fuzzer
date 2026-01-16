@@ -19,6 +19,7 @@ class Executor:
         self.shm = sysv_ipc.SharedMemory(None, sysv_ipc.IPC_CREX, size=MAP_SIZE)
         self.shm_id = self.shm.id
     
+    # for DEBUG
     def print_bitmap_snapshot(self, trace_bits: bytes, rows=32, cols=64):
         print(f"{'Edge ID':<10} | {'Hit Count':<10}")
         print("-" * 25)
@@ -36,7 +37,7 @@ class Executor:
     
     def run(self, input_data: bytes) -> ExecutionResult:
         """
-        4.测试执行组件
+        测试执行组件
         创建子进程运行模糊目标，监控执行结果和覆盖率
         """
         # 初始化返回值
@@ -61,16 +62,16 @@ class Executor:
         full_cmd = [self.target_path]
         use_stdin = True
         if "@@" in self.target_cmd_template:
-            # 模式 A: 文件参数模式 (T02, T03, T04, T05, T07, T08, T09, T10)
+            # 模式 A: 文件参数模式 
             use_stdin = False
             processed_args = self.target_cmd_template.replace("@@", self.input_dir).split()
             full_cmd.extend(processed_args)
         else:
-            # 模式 B: 标准输入模式 (T01, T06)
+            # 模式 B: 标准输入模式 
             if self.target_cmd_template.strip():
                 full_cmd.extend(self.target_cmd_template.split())
         
-        # 3 执行模糊目标，记录执行时间
+        # 执行模糊目标，记录执行时间
         start_time = time.perf_counter_ns()
         
         try:

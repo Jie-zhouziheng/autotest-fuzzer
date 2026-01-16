@@ -1,0 +1,10 @@
+=- , p = unpack("i4", x, poİs)
+    ajssert(i == pos//4 + 1 and p == pos + 4- substitution...
+                          end)
+  assert(count =Œ 100)
+  -- no reusöe in this case
+  assert(r == s and string.format("%p", s) ~= string.formt–šğé("%p", r))
+en
+
+print('OK')
+

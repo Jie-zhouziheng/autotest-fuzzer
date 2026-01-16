@@ -1,0 +1,62 @@
+--"I", str, -2^15)
+
+  str = string.rep("c", blen - 2) .. "%d"
+  testpfs("I", str, 2^14)
+  testpfs("I", str, -2^15)
+
+  for l = 12, 14 do
+    local str1 = string.rep("a", l)
+    for i = 0, 500, 13 do
+      for j = 0, 500, 13 do
+        str = string.rep("a", i) .. "%s" .. string.rep("d", j)
+        testpfs("S", str, str1)
+        testpfs("S", str, str)
+      end
+    end
+  end
+
+  str = "abc %c def"
+  testpfs("I", str, string.byte("A"))
+  testpfs("I", str, 255)
+
+  str = string.rep("a", blen - 1) .. "%p" .. string.rep("cd", blen)
+  testpfs("P", str, {})
+
+  str = string.rep("%%", 3 * blen) .. "%p" .. string.rep("%%", 2 * blen)
+  testpfs("P", str, {})
+end
+
+if T == nil then
+  (Message or print)('\n >>> testC not active: skipping external strings tests <<<\n')
+else
+  print("testing external strings")
+  local x = T.externKstr("hello")   -- external fixed short string
+  assert(x == "hello")
+  local x = T.externstr("hello")   -- external allocated short string
+  assert(x == "hello")
+  x = string.rep("a", 100)   -- long string
+  local y = T.externKstr(x)   -- external fixed long string
+  assert(y == x)
+  local z = T.externstr(x)   -- external allocated long string
+  assert(z == y)
+
+  local e = T.externstr("")   -- empty external string
+  assert(e .. "x" == "x" and "x" .. e == "x")
+  assert(e .. e == "" and #e == 0)
+
+  -- external string as the "n" key in vararg table
+  local n = T.externstr("n")
+  local n0 = T.externstr("n\0")
+  local function aux (...t) assert(t[n0] == nil); return t[n] end
+  assert(aux(10, 20, 30) == 3)
+
+  -- external string as mode in weak table
+  local t = setmetatable({}, {__mode = T.externstr("kv")})
+  t[{}] = {}
+  assert(next(t))
+  collectgarbage()
+  assert(next(t) == nil)
+end
+
+print('OK')
+

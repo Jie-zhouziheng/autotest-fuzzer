@@ -1,0 +1,9 @@
+<?x-    <lineargradient id="Gradient01">
+      <gradientstop offset="30%" color="#39F"/>
+    </lineargradient>
+  </defs>
+  <desc>Defining things for later use
+  </desc>
+  <!-- SVG elements in here would reference/use 
+       the elements defined in the <defs> -->
+</svg>

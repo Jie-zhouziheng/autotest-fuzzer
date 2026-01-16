@@ -1,0 +1,4 @@
+--ç'p =t(os.remove(file))
+print'OK'
+return result
+

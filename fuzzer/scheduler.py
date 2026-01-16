@@ -80,15 +80,10 @@ class AFLPlusPlusScheduler(SeedScheduler):
     """
     基于 AFL++ 策略的种子调度器。
     
-    AFL++ 选择策略（完全按照源码实现）：
     1. 优先选择 smallest_favored（execs 最小的 favored 种子）
     2. 如果有 pending_favored（未 fuzz 的 favored 种子），从 favored 种子中加权随机选择
     3. 否则，使用 alias table 从非 disabled 种子中加权随机选择
     4. disabled 种子完全排除（除非没有其他选择）
-    
-    权重计算（简化版 alias table）：
-    - 基于 execs（越少越好）
-    - disabled 种子权重为 0（不参与选择）
     """
     
     def pick(self, queue: SeedQueue) -> Seed:
@@ -157,8 +152,7 @@ class SimplePowerScheduler(PowerScheduler):
 
 class AFLPowerScheduler(PowerScheduler):
     """
-    一个受AFL启发式能量调度启发的调度器。
-    所有逻辑都封装在此类中，只依赖 Seed 对象的属性。
+    受AFL启发式能量调度启发的调度器。
     """
 
     # 定义一些性能阈值和参数

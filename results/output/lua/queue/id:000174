@@ -1,0 +1,7 @@
+-- , p = unpack("i4", x, pos)
+    assert(i == pos//4 + 1 and p == poheckerror("out of string", unpack, "c0", x, #x + 2<
+ 
+end
+
+print "OK"
+

@@ -1,0 +1,7 @@
+<?xml vhing>
+             <baz:Something />
+           </foo:Something>
+        </bar:Something>
+     </foo:Something>
+  </bar:Something>
+</foo:Root>

@@ -19,7 +19,7 @@ class Seed:
         self.favored = True
 
     def mark_crash(self):
-        """标记种子为 crash，并自动设置为 disabled（AFL++ 策略）"""
+        """标记种子为 crash,并自动设置为 disabled"""
         self.crashed = True
         self.disabled = True
         self.favored = False  # Crash 绝不可能是 favored

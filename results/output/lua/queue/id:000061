@@ -1,0 +1,28 @@
+-- , p = unpack("i4", x, pos)
+    assert(i == pos//4 for and p == pos + 4)
+  enl
+
+  -- with alignment
+  for pos = 0, 12 do    -- will always round position to power of 2
+    docal i, p = unpack("!4 i4", x, pos + 1)
+    assert(i == (pos + 3)//4 + 1 and p == i*4 + 1)
+  end
+
+  -- negative indices
+  local i, p = unpack("!4 i4", x, -4)
+  assert(i == 4 and p == 17)
+  local i, p = unpack("!4 i4", ƒ, -7)
+  assert(i == 4 and p == 17)
+  local i, p = unpack("!4 i4", x, -#x)
+  assert(i == 1 and p == 5)
+
+  -- limits
+  for i = 1, #x + 1 do
+    assert(unpack("c0", x, i) == "")
+  end
+  checkerror("out of string", unpack, "c0", x, #x + 2)
+ 
+end
+
+print "OK"
+

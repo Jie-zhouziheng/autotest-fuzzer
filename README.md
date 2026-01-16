@@ -1,4 +1,4 @@
-# 简易 Python 模糊测试器（Fuzzer）
+# 简易 Python 模糊测试器
 
 这是一个轻量级、基于覆盖率引导的模糊测试工具，用 Python 实现，参考 AFL++ 的设计思想。它通过变异输入种子、执行目标程序、监控覆盖率反馈，自动发现新路径和漏洞。
 
@@ -154,24 +154,22 @@ make TARGET=T10 fuzz
 #### 通过 Makefile 参数配置
 
 ```bash
-# 使用默认配置（1小时，超时2秒，队列500）
+# 使用默认配置（1小时，超时2秒）
 make TARGET=T10 fuzz
 
 # 自定义所有参数
-make TARGET=T10 fuzz TIME=86400 TIMEOUT=5 QUEUE=1000
+make TARGET=T10 fuzz TIME=86400 TIMEOUT=5
 ```
 
 **参数说明：**
-- `TIME`: 总运行时间（秒），默认 3600（1小时）
+- `TIME`: 总运行时间（秒），默认 86400 
 - `TIMEOUT`: 单次执行超时（秒），默认 2
-- `QUEUE`: 最大队列大小，默认 500
 
 #### 通过环境变量配置
 
 ```bash
 export FUZZ_TOTAL_TIMEOUT=86400    # 总运行时间（秒）
 export FUZZ_TIMEOUT_SEC=5          # 单次执行超时（秒）
-export FUZZ_MAX_QUEUE_SIZE=1000   # 最大队列大小
 export FUZZ_TARGET_PATH=/path/to/target
 export FUZZ_TARGET_CMD="-nr @@"
 export FUZZ_SEEDS_DIR=/path/to/seeds
@@ -191,20 +189,22 @@ python3 main.py
   - `logfile.txt`: CSV 格式的统计数据
   - `coverage_curve.png`: 覆盖率增长曲线
   - `crash_curve.png`: 崩溃发现曲线
+  - `exec_speed_curve.png`：执行速度曲线
+  - `queue_size_curve.png`：队列大小曲线
+  - `hang_curve.png`: 超时数量曲线（若有hang）
+  - `fuzzer_stats`：最终状态
 
 ## Makefile 命令
 
 | 命令 | 说明 |
 |------|------|
 | `make TARGET=TXX fuzz` | 编译目标并启动模糊测试 |
-| `make TARGET=TXX fuzz TIME=86400 TIMEOUT=5 QUEUE=1000` | 带自定义参数的模糊测试 |
-| `make TARGET=TXX analysis` | 性能分析（cProfile） |
+| `make TARGET=TXX fuzz TIME=86400 TIMEOUT=5` | 带自定义参数的模糊测试 |
 | `make TARGET=TXX build` | 仅编译目标程序 |
 | `make TARGET=TXX setup` | 创建输出目录 |
 | `make quick-test` | 运行示例目标快速测试 |
 | `make clean` | 清理所有二进制文件和输出 |
 | `make clean-results` | 仅清理测试结果（保留二进制） |
-| `make install` | 安装 Python 依赖 |
 
 ## 配置说明
 
@@ -217,13 +217,136 @@ python3 main.py
 | `FUZZ_SEEDS_DIR` | 种子目录 | `./seeds/test` |
 | `FUZZ_OUTPUT_DIR` | 输出目录 | `./output/test` |
 | `FUZZ_TIMEOUT_SEC` | 单次执行超时（秒） | `2` |
-| `FUZZ_MAX_QUEUE_SIZE` | 最大队列大小 | `500` |
 | `FUZZ_TOTAL_TIMEOUT` | 总运行时间（秒） | `86400` (24小时) |
-| `FUZZ_MAX_EXECUTIONS` | 最大执行次数 | `500` |
 
-## 注意事项
+## 项目设计方案
 
-1. **种子文件**: 确保在 `seeds/{target_name}/` 目录中有有效的初始种子文件
-2. **目标编译**: 目标程序需要使用 `afl-cc` 或 `afl-c++` 编译以启用覆盖率插桩
-3. **长时间运行**: 建议使用 `screen` 或 `tmux` 运行长时间测试
-4. **资源监控**: 长时间运行请监控磁盘空间和内存使用情况
+### 系统架构
+
+本工具采用模块化设计，核心组件包括：
+
+1. **插装组件**：使用 AFL++ 的 `afl-cc` 编译器对目标程序进行插装
+2. **测试执行组件**：负责运行插装后的目标程序并收集执行结果
+3. **执行结果监控组件**：分析覆盖率反馈，识别新路径、崩溃和超时
+4. **变异组件**：对种子进行多种策略的变异操作
+5. **种子排序组件**：从种子队列中选择下一个要变异的种子
+6. **能量调度组件**：为每个种子分配变异次数（能量）
+7. **评估组件**：统计运行结果并生成可视化报告
+
+### 工作流程
+
+```
+0. 编译并插装目标程序（使用 afl-cc）
+
+1. 初始化阶段（main.py）
+   ├─ 加载初始种子文件
+   ├─ 初始化fuzzer
+
+2. 主循环（Fuzzing Loop）
+   ├─ 种子选择：从队列中选择一个种子
+   ├─ 能量分配：为种子计算变异次数
+   ├─ 变异生成：对种子进行变异，生成多个测试用例
+   ├─ 执行测试：运行目标程序，收集覆盖率信息
+   ├─ 结果分析：判断是否发现新路径、崩溃或超时
+   └─ 队列更新：将发现新路径的输入加入队列
+
+3. 结束阶段
+   ├─ 生成统计报告
+   ├─ 绘制覆盖率曲线等图表
+   └─ 保存所有发现的崩溃和超时输入
+```
+
+### 类层次结构
+
+```
+Fuzzer (主控制器)
+├── SeedQueue (种子队列管理)
+│   └── Seed (种子数据结构)
+├── SeedScheduler (种子选择策略)
+│   ├── RoundRobinScheduler 
+│   ├── AFLSmartScheduler 
+│   └── AFLPlusPlusScheduler 
+├── PowerScheduler (能量调度策略)
+│   ├── SimplePowerScheduler
+│   └── AFLPowerScheduler 
+├── Mutator（变异策略）
+│   ├── RanDomMutator
+│   └── AFLPlusPlusMutator
+├── Executor (测试执行)
+├── CoverageMonitor (覆盖率监控)
+└── FuzzEvaluator (评估与报告)
+```
+
+## 核心组件说明
+
+### 1. 测试执行组件 (Executor)
+
+**功能**：运行插装后的目标程序，传递测试输入，并收集执行结果和覆盖率反馈。
+
+**主要特性**：
+- 支持文件参数模式（`@@`）和标准输入模式
+- 通过共享内存读取覆盖率 bitmap
+- 检测程序崩溃（异常退出）和超时
+
+### 2. 执行结果监控组件 (CoverageMonitor)
+
+**功能**：分析每次执行的覆盖率反馈，识别新发现的代码路径、崩溃和超时。
+
+**主要功能**：
+- 解析覆盖率 bitmap，提取边覆盖信息
+- 判断是否发现新的代码路径
+- 统计崩溃和超时数量
+- 实时显示运行状态（类似 AFL++ 的状态面板）
+- 记录运行日志（CSV 格式）
+
+### 3. 变异组件 (Mutator)
+
+**功能**：对种子进行变异，生成新的测试用例。
+
+**变异策略**：
+- **BitFlip**：位翻转
+- **Arithmetic**：算术运算（加减）
+- **Interest**：替换为特殊数值（边界值）
+- **Havoc**：随机破坏（替换、删除、插入字节）
+- **Splice**：拼接两个种子
+
+**实现**：提供 `RanDomMutator`和 `AFLPlusPlusMutator`
+
+### 5. 种子排序组件 (SeedScheduler)
+
+**功能**：从种子队列中选择下一个要变异的种子。
+
+**实现策略**：
+- **RoundRobinScheduler**：按入队顺序轮询选择
+- **AFLSmartScheduler**：优先选择 favored 种子，在 favored 种子中选择质量更好的
+- **AFLPlusPlusScheduler**：参考 AFL++ 策略
+  - 优先选择 execs 最小的 favored 种子
+  - 从 favored 种子中加权随机选择
+  - 从非 disabled 种子中加权随机选择
+
+### 6. 能量调度组件 (PowerScheduler)
+
+**功能**：为每个种子分配变异次数（能量），决定对该种子进行多少次变异操作。
+
+**实现策略**：
+- **SimplePowerScheduler**：基于 favored 状态和执行次数简单分配
+- **AFLPowerScheduler**：启发式调度，考虑以下因素：
+  - 执行速度（执行时间短 → 更多能量）
+  - 覆盖范围（覆盖边数多 → 更多能量）
+  - Favored 状态（favored 种子 → 更多能量）
+  - 执行次数（已执行多次 → 能量衰减）
+
+### 7. 评估组件 (FuzzEvaluator)
+
+**功能**：统计模糊测试的运行结果，生成可视化报告和统计图表。
+
+**输出内容**：
+- **统计信息**：总执行次数、执行速度、发现的崩溃/超时数量、唯一路径数等
+- **可视化图表**：
+  - 覆盖率增长曲线（覆盖边数随时间变化）
+  - 崩溃发现曲线
+  - 执行速度曲线
+  - 队列大小曲线
+- **数据文件**：
+  - `logfile.txt`：CSV 格式的运行日志
+  - `fuzzer_stats`：最终统计信息（AFL++ 格式）
